@@ -1,0 +1,16 @@
+{
+  "image": "jinshi-water-reminder.png",
+  "layout": "packed",
+  "rows": 1,
+  "sheetScale": 0.2741,
+  "frameCounts": [
+    6
+  ],
+  "animations": {
+    "waterReminder": {
+      "row": 0,
+      "frames": 6,
+      "folder": "water-reminder"
+    }
+  }
+}

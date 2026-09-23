@@ -1,0 +1,61 @@
+{
+  "image": "jinshi-expressive.png",
+  "layout": "packed",
+  "rows": 11,
+  "sheetScale": 0.92,
+  "frameCounts": [
+    6,
+    8,
+    8,
+    4,
+    4,
+    8,
+    5,
+    5,
+    5,
+    8,
+    8
+  ],
+  "animations": {
+    "idleThinking": {
+      "row": 0,
+      "frames": 6,
+      "folder": "idle-thinking"
+    },
+    "dragRight": {
+      "row": 1,
+      "frames": 8,
+      "folder": "drag-right"
+    },
+    "dragLeft": {
+      "row": 2,
+      "frames": 8,
+      "folder": "drag-left"
+    },
+    "waving": {
+      "row": 3,
+      "frames": 4,
+      "folder": "waving"
+    },
+    "jumpFall": {
+      "row": 4,
+      "frames": 4,
+      "folder": "jump-fall"
+    },
+    "generalReactions": {
+      "row": 5,
+      "frames": 8,
+      "folder": "reactions"
+    },
+    "lookDirectionsA": {
+      "row": 9,
+      "frames": 8,
+      "folder": "look-directions-a"
+    },
+    "lookDirectionsB": {
+      "row": 10,
+      "frames": 8,
+      "folder": "look-directions-b"
+    }
+  }
+}

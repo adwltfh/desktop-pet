@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+
+    <link rel="stylesheet" href="./style.css" />
+    <link rel="stylesheet" href="./browser.css" />
+
+    <title>Desktop Pet — uji di browser</title>
+  </head>
+
+  <body>
+    <!-- Pengganti desktop: jendela pet dipindah-pindah di dalam area ini -->
+    <div id="desktop" class="desktop">
+      <div id="pet-window" class="pet-window">
+        <div id="stage" class="stage">
+          <div id="bubble" class="bubble" hidden>
+            <p id="bubble-text" class="bubble__text"></p>
+            <span class="bubble__tail"></span>
+          </div>
+
+          <div id="pet" class="pet">
+            <img
+              id="pet-sprite"
+              src="./assets/frames/idle-blink/01.png"
+              alt="Desktop Pet"
+              draggable="false"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <aside id="panel" class="panel">
+      <h1 class="panel__title">Uji Desktop Pet</h1>
+
+      <p class="panel__note">
+        Electron diganti stub, jadi semua pemicu bisa dicoba dari sini.
+        Klik pet untuk digelitik, seret untuk memindah, usap kepalanya
+        bolak-balik untuk pat-pat, klik kanan untuk menu.
+      </p>
+
+      <section class="panel__section">
+        <h2>Status</h2>
+        <dl id="status" class="status"></dl>
+      </section>
+
+      <section class="panel__section">
+        <h2>Mode</h2>
+
+        <label class="check">
+          <input type="checkbox" data-mode="reading" /> Baca
+        </label>
+
+        <label class="check">
+          <input type="checkbox" data-mode="music" /> Musik
+        </label>
+
+        <label class="check">
+          <input type="checkbox" data-mode="coding" /> Ngoding
+        </label>
+
+        <label class="check">
+          <input type="checkbox" data-mode="focus" /> Fokus
+        </label>
+      </section>
+
+      <section class="panel__section">
+        <h2>Chat</h2>
+
+        <label class="check">
+          <input type="checkbox" id="chat-busy" /> Prompt sedang jalan
+        </label>
+
+        <p class="panel__hint">
+          Lewat 8 detik pet berhenti pakai laptop, celingukan, lalu menunggu.
+        </p>
+
+        <div class="row">
+          <select id="say-emotion"></select>
+          <button id="say-send" type="button">Kirim jawaban</button>
+        </div>
+      </section>
+
+      <section class="panel__section">
+        <h2>Tidur</h2>
+
+        <div class="row">
+          <button id="do-sleep" type="button">Suruh tidur</button>
+          <button id="do-wake" type="button">Bangunkan</button>
+        </div>
+
+        <p class="panel__hint">
+          Urutannya sleepy (loop 6 detik) lalu sleep. Bangunkan di tengah
+          sleepy langsung melek; bangunkan saat telungkup lewat wakeUp.
+        </p>
+      </section>
+
+      <section class="panel__section">
+        <h2>Pengingat</h2>
+
+        <div class="row">
+          <button id="do-water" type="button">Minum</button>
+          <button id="do-sleep-reminder" type="button">Peluk boneka</button>
+        </div>
+
+        <p class="panel__hint">
+          Aslinya minum tiap 2 jam, peluk boneka jam 17:00&ndash;03:00 tiap
+          45 menit. Di sini dipicu manual.
+        </p>
+      </section>
+
+      <section class="panel__section">
+        <h2>Animasi</h2>
+
+        <div class="row">
+          <select id="anim-name"></select>
+          <button id="anim-play" type="button">Putar</button>
+        </div>
+
+        <label class="check">
+          <input type="checkbox" id="anim-hold" /> Berhenti di frame terakhir
+        </label>
+
+        <div class="row">
+          <button id="do-random" type="button">Acak</button>
+          <button id="do-resume" type="button">Lanjut aktivitas</button>
+        </div>
+      </section>
+
+      <section class="panel__section">
+        <h2>Waktu</h2>
+
+        <p class="panel__hint">
+          Aturan jam (tidur cepat lewat 21:00, peluk boneka 17:00&ndash;03:00)
+          membaca jam asli. Ubah di sini untuk mengujinya tanpa menunggu.
+        </p>
+
+        <div class="row">
+          <input id="fake-hour" type="number" min="0" max="23" placeholder="jam" />
+          <button id="fake-apply" type="button">Pakai</button>
+          <button id="fake-reset" type="button">Asli</button>
+        </div>
+      </section>
+
+      <section class="panel__section">
+        <h2>Catatan</h2>
+        <ul id="log" class="log"></ul>
+      </section>
+    </aside>
+
+    <!-- Stub harus lebih dulu: skrip di bawahnya memakai window.petAPI -->
+    <script src="./browser-stub.js"></script>
+
+    <script src="./animation.js"></script>
+    <script src="./dialogue.js"></script>
+    <script src="./bubble.js"></script>
+    <script src="./passthrough.js"></script>
+    <script src="./behavior.js"></script>
+    <script src="./drag.js"></script>
+    <script src="./pat.js"></script>
+    <script src="./renderer.js"></script>
+  </body>
+</html>

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data:;"
+    />
+
+    <link rel="stylesheet" href="./test.css" />
+
+    <title>Uji animasi</title>
+  </head>
+
+  <body>
+    <header class="topbar">
+      <div class="topbar__title">
+        <strong>Uji animasi</strong>
+        <span id="status" class="topbar__status">-</span>
+      </div>
+
+      <div class="topbar__actions">
+        <button id="random-button" type="button" class="ghost-button">
+          Acak
+        </button>
+
+        <button id="resume-button" type="button" class="ghost-button">
+          Lanjutkan
+        </button>
+      </div>
+    </header>
+
+    <section class="controls">
+      <div class="controls__group">
+        <span class="controls__label">Arah hadap</span>
+
+        <button id="face-left" type="button" class="ghost-button">
+          Kiri
+        </button>
+
+        <button id="face-right" type="button" class="ghost-button">
+          Kanan
+        </button>
+      </div>
+
+      <label class="controls__toggle">
+        <input id="dialogue-toggle" type="checkbox" checked />
+        Tampilkan dialog
+      </label>
+    </section>
+
+    <main id="list" class="list">
+      <p class="list__empty">Memuat daftar animasi...</p>
+    </main>
+
+    <footer class="hint">
+      Pet berhenti beraktivitas sendiri selama diuji. Tekan
+      <strong>Lanjutkan</strong> atau tutup jendela ini untuk mengembalikannya.
+    </footer>
+
+    <script src="./test.js"></script>
+  </body>
+</html>
