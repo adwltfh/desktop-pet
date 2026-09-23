@@ -1,0 +1,16 @@
+{
+  "image": "jinshi-patting.png",
+  "layout": "packed",
+  "rows": 1,
+  "sheetScale": 0.3077,
+  "frameCounts": [
+    6
+  ],
+  "animations": {
+    "patting": {
+      "row": 0,
+      "frames": 6,
+      "folder": "patting"
+    }
+  }
+}

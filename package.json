@@ -15,6 +15,7 @@
     "electron": "^44.4.4"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
     "pip": "^0.0.1"
   }
 }

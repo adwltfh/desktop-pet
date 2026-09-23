@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data:;"
+    />
+
+    <link rel="stylesheet" href="./chat.css" />
+
+    <title>Ngobrol sama pet</title>
+  </head>
+
+  <body>
+    <header class="topbar">
+      <div class="topbar__title">
+        <strong id="pet-name">Pet</strong>
+        <span id="provider-label" class="topbar__provider">-</span>
+      </div>
+
+      <div class="topbar__actions">
+        <button id="clear-button" type="button" class="ghost-button">
+          Hapus riwayat
+        </button>
+
+        <button id="settings-button" type="button" class="ghost-button">
+          Setting
+        </button>
+      </div>
+    </header>
+
+    <section id="settings-panel" class="settings" hidden>
+      <label class="field">
+        <span class="field__label">Provider</span>
+
+        <select id="provider-select" class="field__input">
+          <option value="claude">Claude (Anthropic)</option>
+          <option value="chatgpt">ChatGPT (OpenAI)</option>
+        </select>
+      </label>
+
+      <label class="field">
+        <span class="field__label">Model</span>
+        <input id="model-input" type="text" class="field__input" />
+      </label>
+
+      <label class="field">
+        <span class="field__label">API key</span>
+
+        <input
+          id="key-input"
+          type="password"
+          class="field__input"
+          placeholder="tempel API key di sini"
+          autocomplete="off"
+        />
+      </label>
+
+      <label class="field">
+        <span class="field__label">Persona</span>
+        <textarea id="persona-input" class="field__input" rows="4"></textarea>
+      </label>
+
+      <p id="settings-hint" class="settings__hint"></p>
+
+      <button id="save-settings" type="button" class="primary-button">
+        Simpan
+      </button>
+    </section>
+
+    <main id="messages" class="messages"></main>
+
+    <form id="composer" class="composer">
+      <textarea
+        id="input"
+        class="composer__input"
+        rows="2"
+        placeholder="Tulis pesan... (Enter kirim, Shift+Enter baris baru)"
+      ></textarea>
+
+      <button id="send-button" type="submit" class="primary-button">
+        Kirim
+      </button>
+    </form>
+
+    <script src="./chat.js"></script>
+  </body>
+</html>

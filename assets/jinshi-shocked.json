@@ -1,0 +1,16 @@
+{
+  "image": "jinshi-shocked.png",
+  "layout": "packed",
+  "rows": 1,
+  "sheetScale": 0.3153,
+  "frameCounts": [
+    6
+  ],
+  "animations": {
+    "shocked": {
+      "row": 0,
+      "frames": 6,
+      "folder": "shocked"
+    }
+  }
+}

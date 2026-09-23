@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="id">
   <head>
     <meta charset="UTF-8" />
 
@@ -14,15 +14,29 @@
   </head>
 
   <body>
-    <div id="pet" class="pet">
-      <img
-        id="pet-sprite"
-        src="./assets/frames/idle-blink/01.png"
-        alt="Desktop Pet"
-        draggable="false"
-      />
+    <div id="stage" class="stage">
+      <div id="bubble" class="bubble" hidden>
+        <p id="bubble-text" class="bubble__text"></p>
+        <span class="bubble__tail"></span>
+      </div>
+
+      <div id="pet" class="pet">
+        <img
+          id="pet-sprite"
+          src="./assets/frames/idle-blink/01.png"
+          alt="Desktop Pet"
+          draggable="false"
+        />
+      </div>
     </div>
 
     <script src="./animation.js"></script>
+    <script src="./dialogue.js"></script>
+    <script src="./bubble.js"></script>
+    <script src="./passthrough.js"></script>
+    <script src="./behavior.js"></script>
+    <script src="./drag.js"></script>
+    <script src="./pat.js"></script>
+    <script src="./renderer.js"></script>
   </body>
 </html>

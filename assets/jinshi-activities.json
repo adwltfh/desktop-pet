@@ -1,0 +1,35 @@
+{
+  "image": "jinshi-activities.png",
+  "columns": 6,
+  "rows": 5,
+  "cellWidth": 192,
+  "cellHeight": 208,
+  "sheetScale": 0.729,
+  "animations": {
+    "reading": {
+      "row": 0,
+      "frames": 6,
+      "folder": "reading"
+    },
+    "waiting": {
+      "row": 1,
+      "frames": 6,
+      "folder": "waiting"
+    },
+    "dancing": {
+      "row": 2,
+      "frames": 6,
+      "folder": "dancing"
+    },
+    "listeningMusic": {
+      "row": 3,
+      "frames": 6,
+      "folder": "listening-music"
+    },
+    "usingLaptop": {
+      "row": 4,
+      "frames": 6,
+      "folder": "using-laptop"
+    }
+  }
+}
