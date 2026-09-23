@@ -1,0 +1,16 @@
+{
+  "image": "jinshi-gaze-a.png",
+  "layout": "packed",
+  "rows": 1,
+  "sheetScale": 0.365,
+  "frameCounts": [
+    8
+  ],
+  "animations": {
+    "gazeA": {
+      "row": 0,
+      "frames": 8,
+      "folder": "gaze-a"
+    }
+  }
+}

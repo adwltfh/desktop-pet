@@ -45,10 +45,16 @@ body {
   pointer-events: none;
 
   -webkit-user-drag: none;
+
+  /* Sebagian frame dimiringkan lewat --pet-tilt, dipasang per frame oleh
+     animation.js. Porosnya di kaki supaya badannya condong, bukan
+     melayang miring. */
+  transform: rotate(var(--pet-tilt, 0deg));
+  transform-origin: 50% 94%;
 }
 
 .pet.is-facing-left img {
-  transform: scaleX(-1);
+  transform: scaleX(-1) rotate(var(--pet-tilt, 0deg));
 }
 
 /* Diangkat: badan sedikit terangkat dan bergoyang */

@@ -5,6 +5,9 @@ contextBridge.exposeInMainWorld('petAPI', {
   moveBy: (dx, dy) => ipcRenderer.send('pet:move-by', { dx, dy }),
   setPosition: (x, y) => ipcRenderer.send('pet:set-position', { x, y }),
   getBounds: () => ipcRenderer.invoke('pet:get-bounds'),
+
+  // Selisih kursor terhadap mata pet, dipakai pandangan yang mengikuti mouse
+  getCursor: () => ipcRenderer.invoke('pet:get-cursor'),
   raise: () => ipcRenderer.send('pet:raise'),
 
   openChat: () => ipcRenderer.send('pet:open-chat'),

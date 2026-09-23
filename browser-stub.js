@@ -24,6 +24,18 @@
   let desktopElement = null
   let animationList = []
 
+  // Di Electron posisi kursor dibaca main process lewat screen; di browser
+  // cukup mengikuti mousemove halaman.
+  const pointer = { x: 0, y: 0 }
+
+  // Sama dengan PET_EYE_OFFSET di main.js
+  const petEyeOffset = 108
+
+  window.addEventListener('mousemove', event => {
+    pointer.x = event.clientX
+    pointer.y = event.clientY
+  })
+
   function applyPosition() {
     if (!petWindowElement) {
       return
@@ -97,6 +109,19 @@
 
       workArea: workArea(),
     }),
+
+    getCursor: async () => {
+      if (!petWindowElement) {
+        return null
+      }
+
+      const rect = petWindowElement.getBoundingClientRect()
+
+      return {
+        dx: pointer.x - (rect.left + rect.width / 2),
+        dy: pointer.y - (rect.bottom - petEyeOffset),
+      }
+    },
 
     openChat: () => window.petTestPanel?.log('buka chat (tidak ada di browser)'),
     showMenu: () => window.petTestPanel?.openContextMenu(),
@@ -277,6 +302,16 @@
     document.querySelector('#do-resume').addEventListener('click', () => {
       send({ action: 'resume' })
       log('lanjut aktivitas')
+    })
+
+    document.querySelector('#do-gaze').addEventListener('click', () => {
+      window.petBehavior.gazeNow()
+      log('ikuti kursor selama 20 detik')
+    })
+
+    document.querySelector('#do-bored').addEventListener('click', () => {
+      window.petBehavior.boredNow()
+      log('langsung ke pose menunggu')
     })
 
     // --- jam palsu ---

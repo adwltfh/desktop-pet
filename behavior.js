@@ -3,7 +3,9 @@
     playAnimation,
     playRandomAnimation,
     setFacing,
+    lookAt,
     animationDuration,
+    getCurrentAnimation,
     isLooping,
   } = window.petAnim
   const { pickLine } = window.petDialogue
@@ -22,7 +24,7 @@
   // sendiri (mode, pengingat, klik, chat) sengaja tidak masuk sini supaya
   // tidak muncul di saat yang tidak berarti apa-apa.
   const activities = [
-    { name: 'idle', weight: 20 },
+    { name: 'idle', weight: 24 },
     { name: 'idleThinking', weight: 10 },
     { name: 'walk', weight: 28 },
     { name: 'run', weight: 7 },
@@ -32,6 +34,22 @@
   ]
 
   const STEP_INTERVAL = 40
+
+  // Jarak antar penyegaran arah pandang. Lebih rapat dari ini cuma menambah
+  // lalu lintas IPC: framenya toh cuma ada 16.
+  const GAZE_INTERVAL = 100
+
+  // Kursor sedekat ini ke kepala tidak punya arah yang jelas lagi, jadi
+  // pandangan terakhir dipertahankan.
+  const GAZE_DEAD_ZONE = 12
+
+  // Geser sependek ini belum dihitung sebagai kursor yang bergerak. Tangan
+  // yang cuma bertumpu di mouse tidak seharusnya menahan pandangan.
+  const GAZE_MOVE_THRESHOLD = 6
+
+  // Kursor diam selama ini: pet kembali berkedip. Frame pandangan tidak
+  // bergerak sendiri, jadi kalau dibiarkan pet terlihat membeku.
+  const GAZE_REST_AFTER = 1500
 
   // Jam mulai pengingat tidur (peluk boneka) sampai jam berakhirnya, lewat
   // tengah malam. Di luar rentang ini animasinya tidak pernah jalan.
@@ -61,8 +79,15 @@
     ['focus', 'usingLaptop'],
   ]
 
+  // Mode yang pegang barang harus membereskannya dulu sebelum ditinggal
+  const MODE_EXIT_ANIMATIONS = {
+    usingLaptop: 'laptopClose',
+    reading: 'bookClose',
+  }
+
   let activityTimer = null
   let walkTimer = null
+  let gazeTimer = null
   let waterTimer = null
   let sleepReminderTimer = null
   let longPromptTimer = null
@@ -150,6 +175,96 @@
     walkTimer = null
   }
 
+  function stopGazing() {
+    clearInterval(gazeTimer)
+    gazeTimer = null
+  }
+
+  // Dipakai di tiap peralihan aktivitas: dua-duanya memegang frame pet
+  // lewat timer sendiri, jadi harus mati bareng.
+  function stopMotion() {
+    stopWalking()
+    stopGazing()
+  }
+
+  // Berdiri diam sambil mengikuti kursor. Frame pandangan tidak diputar
+  // timer animasi: tiap denyut posisi kursor ditanya ke main process, lalu
+  // frame yang arahnya paling dekat dipasang.
+  //
+  // Frame itu diam kalau kursornya diam, jadi begitu kursor berhenti pet
+  // dikembalikan ke kedipan `idle`. Pandangannya tetap dipantau, jadi
+  // begitu kursor bergerak lagi dia langsung menoleh.
+  function startGaze(duration) {
+    const until = Date.now() + duration
+
+    let previous = null
+    let lastMovedAt = Date.now()
+
+    maybeChatter('idle')
+    stopMotion()
+    setFacing('right')
+
+    // Aktivitas ini yang pegang jadwalnya sampai durasinya habis;
+    // penjadwalan yang masih menggantung akan memotongnya di tengah jalan.
+    clearTimeout(activityTimer)
+
+    function moved(cursor) {
+      if (!previous) {
+        return true
+      }
+
+      return Math.hypot(
+        cursor.dx - previous.dx,
+        cursor.dy - previous.dy,
+      ) > GAZE_MOVE_THRESHOLD
+    }
+
+    async function follow() {
+      if (paused || asleep || chatBusy) {
+        stopGazing()
+        return
+      }
+
+      const cursor = await window.petAPI.getCursor()
+
+      // Denyut ini bisa datang setelah pandangan dihentikan, karena
+      // jawaban main process ditunggu.
+      if (!gazeTimer) {
+        return
+      }
+
+      const now = Date.now()
+
+      if (cursor) {
+        if (moved(cursor)) {
+          previous = cursor
+          lastMovedAt = now
+        }
+
+        // Kursor menempel di kepala: arahnya tidak jelas lagi, diperlakukan
+        // sama seperti kursor yang diam.
+        const aimed = Math.hypot(cursor.dx, cursor.dy) > GAZE_DEAD_ZONE
+
+        if (aimed && now - lastMovedAt < GAZE_REST_AFTER) {
+          lookAt(cursor.dx, cursor.dy)
+        }
+        else if (getCurrentAnimation() !== 'idle') {
+          playAnimation('idle')
+        }
+      }
+
+      if (now >= until) {
+        stopGazing()
+        playAnimation('idle')
+        scheduleNext(randomBetween(800, 2500))
+      }
+    }
+
+    gazeTimer = setInterval(follow, GAZE_INTERVAL)
+
+    follow()
+  }
+
   function scheduleNext(delay) {
     clearTimeout(activityTimer)
 
@@ -157,6 +272,8 @@
   }
 
   async function startWalk(isRunning) {
+    stopGazing()
+
     const info = await window.petAPI.getBounds()
 
     if (!info || paused || asleep) {
@@ -190,7 +307,7 @@
     playAnimation(isRunning ? 'run' : 'walk')
     maybeChatter(isRunning ? 'run' : 'walk')
 
-    stopWalking()
+    stopMotion()
 
     walkTimer = setInterval(() => {
       if (paused || asleep) {
@@ -249,7 +366,7 @@
     const startOver = Date.now() - lastBoredAt >= config.boredAfter
 
     if (!startOver) {
-      if (window.petAnim.getCurrentAnimation() !== 'waiting') {
+      if (getCurrentAnimation() !== 'waiting') {
         playAnimation('waiting')
       }
 
@@ -277,7 +394,7 @@
   function goSleep() {
     asleep = true
 
-    stopWalking()
+    stopMotion()
     clearTimeout(activityTimer)
     clearTimeout(longPromptTimer)
 
@@ -306,6 +423,8 @@
       return
     }
 
+    stopGazing()
+
     const idleFor = Date.now() - lastInteraction
 
     // Mode aktif menggantikan aktivitas acak: pet menemani dengan satu
@@ -314,6 +433,15 @@
     const mode = modeAnimation()
 
     if (mode) {
+      // Animasi modenya sudah jalan: biarkan putarannya selesai. Kalau
+      // diputar ulang tiap penjadwalan, frame yang letaknya di akhir
+      // putaran (mis. saat menemukan sesuatu di buku) tidak pernah sempat
+      // muncul.
+      if (getCurrentAnimation() === mode) {
+        scheduleNext(randomBetween(8000, 14000))
+        return
+      }
+
       playLooping(mode, randomBetween(8000, 14000))
       return
     }
@@ -335,6 +463,13 @@
       return
     }
 
+    // Berdiri diam berarti mengikuti kursor. Berhenti lewat durasinya
+    // sendiri, bukan lewat scheduleNext.
+    if (activity === 'idle') {
+      startGaze(randomBetween(5000, 11000))
+      return
+    }
+
     // Animasi looping tidak pernah memanggil onEnd, jadi dijadwalkan
     // ulang lewat durasi.
     if (isLooping(activity)) {
@@ -352,7 +487,7 @@
       return
     }
 
-    stopWalking()
+    stopMotion()
     clearTimeout(activityTimer)
 
     const line = pickLine(lineKey)
@@ -394,7 +529,7 @@
 
   function wake(options = {}) {
     const wasAsleep = asleep
-    const wasLyingDown = window.petAnim.getCurrentAnimation() === 'sleep'
+    const wasLyingDown = getCurrentAnimation() === 'sleep'
 
     asleep = false
     lastInteraction = Date.now()
@@ -403,6 +538,7 @@
     // Transisi sleepy -> sleep mungkin masih menunggu; kalau tidak dibatalkan
     // dia akan memotong animasi bangun.
     clearTimeout(activityTimer)
+    stopGazing()
 
     if (wasAsleep || options.force) {
       hideBubble()
@@ -429,19 +565,61 @@
     scheduleNext(randomBetween(600, 1500))
   }
 
+  // Pet yang sedang menunggu baru menyadari penggunanya di sini, bukan di
+  // tengah putaran menunggu. Di luar keadaan itu tidak ada yang berubah:
+  // notifyInteraction dipanggil dari mana-mana (seret, usap, chat, menu).
+  function noticeReturn() {
+    if (paused || chatBusy) {
+      return
+    }
+
+    if (getCurrentAnimation() !== 'waiting') {
+      return
+    }
+
+    playAnimation('waitingNotice', {
+      onEnd: () => {
+        playAnimation('idle')
+        scheduleNext(randomBetween(600, 1500))
+      },
+    })
+  }
+
   function notifyInteraction() {
     lastInteraction = Date.now()
     lastBoredAt = 0
 
     if (asleep) {
       wake()
+      return
     }
+
+    noticeReturn()
   }
+
+  // Kursor mendekat ke pet yang sedang menunggu sudah cukup: frame itu
+  // memang menggambarkan dia baru ngeh ada orang, bukan dia dipegang.
+  // Sengaja hanya berlaku di pose menunggu — kalau tidak, kursor yang
+  // kebetulan parkir di atas pet bikin dia tidak pernah mengantuk.
+  //
+  // Mouse event tetap diteruskan ke renderer walau jendelanya tembus klik,
+  // jadi cukup dengar di window.
+  window.addEventListener('mousemove', () => {
+    if (getCurrentAnimation() !== 'waiting') {
+      return
+    }
+
+    if (!window.petPassthrough?.isInteractive()) {
+      return
+    }
+
+    notifyInteraction()
+  })
 
   function pause() {
     paused = true
 
-    stopWalking()
+    stopMotion()
     clearTimeout(activityTimer)
   }
 
@@ -493,14 +671,45 @@
   // Mode diganti dari menu klik-kanan: pet langsung pindah ke animasi
   // yang sesuai, tidak menunggu aktivitas berjalan selesai.
   function applyModes(next) {
+    const before = modeAnimation()
+
     modes = { ...modes, ...(next ?? {}) }
+
+    const after = modeAnimation()
 
     notifyInteraction()
 
-    if (!paused && !chatBusy) {
-      stopWalking()
-      scheduleNext(200)
+    if (paused || chatBusy) {
+      return
     }
+
+    stopMotion()
+
+    // Meninggalkan mode yang pegang barang: laptop ditutup atau buku
+    // dibereskan dulu, baru pindah ke mode berikutnya / aktivitas biasa.
+    const exitAnimation = before === after
+      ? null
+      : MODE_EXIT_ANIMATIONS[before]
+
+    if (exitAnimation) {
+      clearTimeout(activityTimer)
+
+      playAnimation(exitAnimation, {
+        onEnd: () => {
+          if (after) {
+            scheduleNext(200)
+            return
+          }
+
+          playAnimation('idle')
+          scheduleNext(randomBetween(600, 1200))
+        },
+      })
+
+      return
+    }
+
+    scheduleNext(200)
   }
 
   function applySettings(settings) {
@@ -535,6 +744,31 @@
     // Pengingat aslinya dipicu timer; dibuka juga supaya bisa diuji manual
     remindWater: () => playReminder('waterReminder', 'waterReminder'),
     remindSleep: () => playReminder('hugPlushie', 'sleepReminder'),
+
+    // Bosan aslinya baru datang setelah beberapa menit tanpa interaksi.
+    // Dibuka supaya pose menunggunya bisa diuji tanpa menunggu selama itu.
+    boredNow: () => {
+      paused = false
+      lastInteraction = Date.now() - config.boredAfter
+
+      // Celingukannya dilewati: yang diuji pose menunggunya
+      lastBoredAt = Date.now()
+
+      stopMotion()
+      goBored()
+    },
+
+    // Aslinya pandangan cuma muncul sebagai aktivitas acak, jadi susah
+    // ditunggu. Dibuka supaya bisa dipanggil langsung waktu diuji.
+    gazeNow: (duration = 20000) => {
+      notifyInteraction()
+
+      // Panel uji biasanya sudah menjeda pet lewat tombol lain, dan
+      // pandangan berhenti sendiri kalau pet dijeda.
+      paused = false
+
+      startGaze(duration)
+    },
 
     playRandom: () => {
       notifyInteraction()

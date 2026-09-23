@@ -21,8 +21,9 @@ ALPHA_THRESHOLD = 10
 # Jarak dari dasar kanvas ke garis lantai. Sama dengan PADDING di slice_sprite.py
 FLOOR_PADDING = 8
 
-# Buangan: gumpalan yang seluruhnya berada di atas badan dan jauh lebih kecil
-# darinya dianggap sisa baris di atasnya, bukan bagian gambar.
+# Buangan: gumpalan yang seluruhnya berada di luar rentang badan — di atas,
+# di bawah, di kiri, atau di kanannya — dan jauh lebih kecil darinya dianggap
+# sisa sel tetangganya, bukan bagian gambar.
 STRAY_MAX_AREA_RATIO = 0.25
 
 # Bercak sekecil ini tidak akan terlihat lagi setelah diperkecil
@@ -98,11 +99,15 @@ def erase(cell, drop):
 
 
 def clean_cell(cell):
-    """Buang gumpalan melayang di atas atau di bawah badan, beserta bercaknya.
+    """Buang gumpalan melayang di sekeliling badan, beserta bercaknya.
 
-    Gumpalan seperti itu datangnya dari baris tetangga: sisa yang ikut terbawa
-    waktu sheet dibuat, atau ujung gambar baris sebelah yang masuk ke dalam
-    potongan.
+    Gumpalan seperti itu datangnya dari sel tetangga: sisa yang ikut terbawa
+    waktu sheet dibuat, atau ujung gambar sebelahnya yang masuk ke dalam
+    potongan. Tetangganya bisa di baris atas-bawah maupun di kolom kiri-kanan,
+    jadi keterpisahannya diperiksa pada kedua sumbu.
+
+    Tanda seperti "?" atau percikan tetap aman: gambarnya masih bersinggungan
+    dengan rentang badan di kedua sumbu, jadi tidak terhitung terpisah.
 
     Dikerjakan sebelum penskalaan supaya kotak isi (dan garis lantai baris)
     dihitung dari gambar yang sudah bersih.
@@ -114,16 +119,23 @@ def clean_cell(cell):
 
     labels, blob_ids = label_blobs(mask)
 
-    spans = {
+    rows_of = {
         blob: np.nonzero((labels == blob).any(axis=1))[0]
+        for blob in blob_ids
+    }
+
+    columns_of = {
+        blob: np.nonzero((labels == blob).any(axis=0))[0]
         for blob in blob_ids
     }
 
     areas = {blob: int((labels == blob).sum()) for blob in blob_ids}
 
     body = max(blob_ids, key=lambda blob: areas[blob])
-    body_top = int(spans[body][0])
-    body_bottom = int(spans[body][-1])
+    body_top = int(rows_of[body][0])
+    body_bottom = int(rows_of[body][-1])
+    body_left = int(columns_of[body][0])
+    body_right = int(columns_of[body][-1])
 
     drop = np.zeros_like(mask)
 
@@ -132,8 +144,10 @@ def clean_cell(cell):
             continue
 
         detached = (
-            int(spans[blob][-1]) < body_top
-            or int(spans[blob][0]) > body_bottom
+            int(rows_of[blob][-1]) < body_top
+            or int(rows_of[blob][0]) > body_bottom
+            or int(columns_of[blob][-1]) < body_left
+            or int(columns_of[blob][0]) > body_right
         )
 
         if areas[blob] < MIN_BLOB_AREA or (

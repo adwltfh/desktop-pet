@@ -88,20 +88,23 @@
   function scheduleStop() {
     clearTimeout(stopTimer)
 
-    stopTimer = setTimeout(stopPatting, STROKE_IDLE_MS)
+    stopTimer = setTimeout(finishPatting, STROKE_IDLE_MS)
   }
 
-  function playPatting() {
-    playAnimation('patting', {
-      onEnd: () => {
-        // Keburu diangkat: drag.js yang pegang animasinya sekarang
-        if (isBusy()) {
-          return
-        }
+  // Elusannya berhenti: tangan pergi, pet merespons, lalu kembali normal.
+  // Reaksi senangnya sengaja ditaruh di sini, bukan di dalam putaran
+  // mengusap, supaya cuma muncul sekali setelah tangannya diangkat.
+  function finishPatting() {
+    stopPatting()
 
-        // Selama masih diusap, animasinya diulang
-        if (patting) {
-          playPatting()
+    // Keburu diangkat: drag.js yang pegang animasinya sekarang
+    if (isBusy()) {
+      return
+    }
+
+    playAnimation('pattingEnd', {
+      onEnd: () => {
+        if (isBusy()) {
           return
         }
 
@@ -109,6 +112,13 @@
         window.petBehavior.resume(800)
       },
     })
+  }
+
+  // `onEnd` kosong supaya animasinya berhenti di frame tangan-di-kepala,
+  // bukan balik ke idle. Yang menutupnya finishPatting, waktu elusannya
+  // sudah berhenti.
+  function playPatting() {
+    playAnimation('patting', { onEnd: () => {} })
   }
 
   function startPatting() {

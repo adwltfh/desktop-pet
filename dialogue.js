@@ -50,6 +50,13 @@
       'Rasanya tadi kamu masih di depan layar.',
     ],
 
+    gaze: [
+      'Kursornya kuikuti terus, jangan lari-lari begitu.',
+      'Mataku capek mengejar pointer-mu, tahu.',
+      'Ke mana pun kamu klik, aku lihat, kok.',
+      'Sudah, aku pandangi saja kamu sebentar.',
+    ],
+
     cuteGesture: [
       'Kenapa? Ada yang menarik di wajahku?',
       'Kalau ditatap begitu terus, aku bisa salah paham.',

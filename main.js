@@ -14,6 +14,11 @@ const settings = require('./settings')
 const PET_WIDTH = 320
 const PET_HEIGHT = 300
 
+// Tinggi mata pet dari dasar jendela. Sprite-nya menempel di dasar stage,
+// jadi angkanya tetap. Dipakai supaya arah pandang dihitung dari kepala,
+// bukan dari titik tengah jendela yang sebagian besarnya kosong.
+const PET_EYE_OFFSET = 108
+
 // Windows kadang melepas flag topmost saat jendela frameless + transparent
 // dipindah berkali-kali, jadi levelnya dipasang ulang secara berkala.
 const TOP_LEVEL = 'screen-saver'
@@ -373,6 +378,24 @@ function registerIpc() {
     const area = screen.getDisplayNearestPoint(bounds).workArea
 
     return { bounds, workArea: area }
+  })
+
+  // Kursor bisa berada di mana saja di layar, jadi posisinya tidak bisa
+  // dibaca dari renderer yang jendelanya tembus klik. Yang dikembalikan
+  // langsung selisihnya terhadap mata pet supaya renderer tidak perlu
+  // menanyakan bounds tiap kali pandangannya disegarkan.
+  ipcMain.handle('pet:get-cursor', () => {
+    if (!petWindow || petWindow.isDestroyed()) {
+      return null
+    }
+
+    const point = screen.getCursorScreenPoint()
+    const bounds = petWindow.getBounds()
+
+    return {
+      dx: point.x - (bounds.x + bounds.width / 2),
+      dy: point.y - (bounds.y + bounds.height - PET_EYE_OFFSET),
+    }
   })
 
   ipcMain.on('pet:open-chat', () => {
