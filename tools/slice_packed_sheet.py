@@ -17,7 +17,7 @@ Jadi di sini batas frame dicari dari gambarnya sendiri:
 
 Peta JSON-nya sama seperti pemotong grid, hanya tanpa ukuran sel:
 
-    python tools/slice_packed_sheet.py assets/jinshi-expressive.json
+    python tools/slice_packed_sheet.py src/renderer/pet/assets/jinshi-expressive.json
 """
 
 import json

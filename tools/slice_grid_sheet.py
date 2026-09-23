@@ -2,9 +2,9 @@
 
 Beda dengan `slice_sprite.py` yang menebak batas frame lewat proyeksi alpha,
 sheet di sini sudah rapi: tiap sel berukuran sama. Peta grid-nya dibaca dari
-file JSON di `assets/` yang namanya diberikan lewat argumen, misal:
+file JSON di `src/renderer/pet/assets/` yang namanya diberikan lewat argumen, misal:
 
-    python tools/slice_grid_sheet.py assets/jinshi-activities.json
+    python tools/slice_grid_sheet.py src/renderer/pet/assets/jinshi-activities.json
 
 Tanpa argumen, semua peta di DEFAULT_MAPS diproses.
 

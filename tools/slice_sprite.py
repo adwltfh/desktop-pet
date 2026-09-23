@@ -19,8 +19,9 @@ import numpy as np
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
-INPUT_FILE = ROOT / "assets" / "jinshi.png"
-OUTPUT_DIR = ROOT / "assets" / "frames"
+ASSETS_DIR = ROOT / "src" / "renderer" / "pet" / "assets"
+INPUT_FILE = ASSETS_DIR / "jinshi.png"
+OUTPUT_DIR = ASSETS_DIR / "frames"
 
 # Urutan baris di sprite sheet, dari atas ke bawah
 ROW_NAMES = [

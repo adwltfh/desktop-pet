@@ -10,7 +10,7 @@ import numpy as np
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parent.parent
-ASSETS_DIR = ROOT / "assets"
+ASSETS_DIR = ROOT / "src" / "renderer" / "pet" / "assets"
 OUTPUT_DIR = ASSETS_DIR / "frames"
 
 # Dipakai untuk mencari ukuran kanvas + tinggi karakter acuan
