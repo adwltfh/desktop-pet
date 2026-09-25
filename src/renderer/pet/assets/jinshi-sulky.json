@@ -1,0 +1,28 @@
+{
+  "image": "jinshi-sulky.png",
+  "layout": "packed",
+  "columns": 6,
+  "rows": 1,
+  "cellWidth": 362,
+  "cellHeight": 724,
+  "frameCrop": {
+    "top": 130,
+    "height": 460
+  },
+  "scaledSprite": {
+    "width": 108,
+    "height": 136,
+    "topPadding": 5
+  },
+  "frameSize": {
+    "width": 151,
+    "height": 149
+  },
+  "animations": {
+    "sulky": {
+      "row": 0,
+      "frames": 6,
+      "folder": "sulky"
+    }
+  }
+}

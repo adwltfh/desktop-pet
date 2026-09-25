@@ -1,0 +1,136 @@
+:root {
+  color-scheme: dark;
+  --plum: #211a2c;
+  --gold-light: #eed0a1;
+  --ivory: #fff7f1;
+  --water: #8ed2d4;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+  font: 12px/1 'Segoe UI', system-ui, sans-serif;
+}
+
+/* Ukuran kapsul mengikuti pat counter; materialnya dari shared/glass.css. */
+.badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: calc(100% - 6px);
+  margin: 3px;
+  padding: 7px 10px;
+  border-radius: 999px;
+}
+
+.badge__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.15;
+}
+
+.badge__text strong {
+  color: var(--gold-light);
+  font: 700 15px Georgia, 'Times New Roman', serif;
+}
+
+.badge__text span {
+  overflow: hidden;
+  color: #eee7f1;
+  font-size: 10px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.bottle {
+  display: flex;
+  flex: none;
+  align-items: center;
+  flex-direction: column;
+  justify-content: flex-end;
+  width: 20px;
+  height: 32px;
+  filter: drop-shadow(0 0 3px rgba(142, 210, 212, .18));
+}
+
+.bottle__cap {
+  z-index: 1;
+  width: 12px;
+  height: 4px;
+  border: 1px solid var(--gold-light);
+  border-radius: 2px 2px 1px 1px;
+  background: var(--plum);
+}
+
+.bottle__neck {
+  width: 9px;
+  height: 4px;
+  border-right: 1.5px solid var(--water);
+  border-left: 1.5px solid var(--water);
+}
+
+.bottle__body {
+  position: relative;
+  width: 19px;
+  height: 23px;
+  overflow: hidden;
+  border: 1.5px solid var(--water);
+  border-radius: 5px 5px 6px 6px;
+  background: rgba(142, 210, 212, .07);
+}
+
+.bottle__body::after {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 2px;
+  height: 7px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, .45);
+  content: '';
+}
+
+.bottle__water {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 84%;
+  border-radius: 3px 3px 0 0;
+  background: linear-gradient(#aee8e4, #5aaebd);
+  transform: scaleY(var(--fill, 0));
+  transform-origin: bottom;
+  transition: transform 350ms ease;
+}
+
+.badge__actions { display: flex; flex: none; gap: 3px; }
+
+.badge__actions button {
+  width: 21px;
+  height: 21px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, .32);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .09);
+  color: var(--ivory);
+  cursor: pointer;
+  font: 600 15px/1 system-ui, sans-serif;
+}
+
+#drink-plus { border-color: var(--water); color: var(--water); }
+.badge__actions button:hover { background: rgba(255, 255, 255, .2); }
+.badge__actions button:focus-visible { outline: 2px solid var(--water); outline-offset: 2px; }
+.badge__actions button:disabled { opacity: .4; cursor: default; }
+.badge__actions button:active:not(:disabled) { transform: translateY(1px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .bottle__water { transition: none; }
+  .badge__actions button:active:not(:disabled) { transform: none; }
+}

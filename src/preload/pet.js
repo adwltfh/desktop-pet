@@ -5,6 +5,8 @@ contextBridge.exposeInMainWorld('petAPI', {
   moveBy: (dx, dy) => ipcRenderer.send('pet:move-by', { dx, dy }),
   setPosition: (x, y) => ipcRenderer.send('pet:set-position', { x, y }),
   getBounds: () => ipcRenderer.invoke('pet:get-bounds'),
+  getCounterTarget: () => ipcRenderer.invoke('pet:get-counter-target'),
+  kickCounter: () => ipcRenderer.send('pet:kick-counter'),
 
   // Selisih kursor terhadap mata pet, dipakai pandangan yang mengikuti mouse
   getCursor: () => ipcRenderer.invoke('pet:get-cursor'),
@@ -18,6 +20,20 @@ contextBridge.exposeInMainWorld('petAPI', {
   reportAnimations: list => ipcRenderer.send('pet:animations', list),
 
   getSettings: () => ipcRenderer.invoke('settings:get'),
+
+  // Like/counter pat: statusnya disimpan di main process supaya bertahan
+  // lintas hari & lintas restart, bukan cuma hidup di renderer.
+  checkAffection: () => ipcRenderer.invoke('affection:check'),
+  recordPat: () => ipcRenderer.invoke('affection:record-pat'),
+
+  onAffectionPenalty: handler => {
+    ipcRenderer.on('pet:affection-penalty', (_event, payload) => handler(payload))
+  },
+
+  onDrinkReminder: handler => {
+    ipcRenderer.on('pet:drink-reminder', handler)
+  },
+  ackDrinkReminder: () => ipcRenderer.invoke('drinks:ack-reminder'),
 
   // Mode aktivitas (reading / music / coding / focus) disimpan di main
   // process supaya menu klik-kanan dan pet melihat nilai yang sama.
@@ -41,5 +57,11 @@ contextBridge.exposeInMainWorld('petAPI', {
 
   onModes: handler => {
     ipcRenderer.on('pet:modes', (_event, payload) => handler(payload))
+  },
+
+  // Deteksi scroll global (lihat main/scroll-watch.js) -- payload
+  // { active: boolean }, dikirim sekali tiap rentetan scroll mulai/berhenti.
+  onScrollState: handler => {
+    ipcRenderer.on('pet:scroll-state', (_event, payload) => handler(payload))
   },
 })

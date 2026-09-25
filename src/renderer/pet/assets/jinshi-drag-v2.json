@@ -1,0 +1,25 @@
+{
+  "image": "jinshi-drag-v2.png",
+  "layout": "packed",
+  "columns": 8,
+  "cellHeight": 724,
+  "frameCrops": [
+    { "x": 0, "width": 245, "scaledWidth": 88 },
+    { "x": 245, "width": 257, "scaledWidth": 92 },
+    { "x": 502, "width": 270, "scaledWidth": 97 },
+    { "x": 772, "width": 291, "scaledWidth": 104 },
+    { "x": 1063, "width": 272, "scaledWidth": 97 },
+    { "x": 1335, "width": 298, "scaledWidth": 107 },
+    { "x": 1633, "width": 268, "scaledWidth": 96 },
+    { "x": 1901, "width": 271, "scaledWidth": 97 }
+  ],
+  "cropTop": 215,
+  "cropHeight": 380,
+  "scaledHeight": 136,
+  "topPadding": 5,
+  "frameSize": { "width": 151, "height": 149 },
+  "animations": {
+    "drag": { "frames": [1, 2], "folder": "drag" },
+    "dragHeld": { "frames": [3], "folder": "drag" }
+  }
+}

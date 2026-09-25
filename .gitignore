@@ -1,2 +1,9 @@
 node_modules/
 __pycache__/
+
+# Config lokal Obsidian buat vault personality/ -- spesifik per mesin
+.obsidian/
+
+# Turunan node_modules/mermaid, dibuat ulang otomatis lewat postinstall
+# (lihat scripts/vendor-mermaid.js) -- bukan source, jangan di-commit.
+src/renderer/chat/vendor/

@@ -1,0 +1,13 @@
+{
+  "image": "jinshi-waving-v2.png",
+  "layout": "packed",
+  "columns": 4,
+  "cellWidth": 543,
+  "cellHeight": 724,
+  "frameCrop": { "top": 70, "height": 620 },
+  "scaledSprite": { "width": 119, "height": 136, "topPadding": 5 },
+  "frameSize": { "width": 151, "height": 149 },
+  "animations": {
+    "waving": { "frames": 4, "folder": "waving" }
+  }
+}

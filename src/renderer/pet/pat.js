@@ -129,6 +129,8 @@
     window.petBehavior.notifyInteraction()
     window.petBehavior.pause()
 
+    window.petAPI.recordPat()
+
     showBubble(pickLine('patting'))
     playPatting()
     scheduleStop()

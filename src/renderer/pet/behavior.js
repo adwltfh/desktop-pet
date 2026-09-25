@@ -4,7 +4,6 @@
     playRandomAnimation,
     setFacing,
     lookAt,
-    animationDuration,
     getCurrentAnimation,
     isLooping,
   } = window.petAnim
@@ -14,22 +13,20 @@
   // Diisi ulang dari settings di main process saat renderer siap
   let config = {
     boredAfter: 3 * 60 * 1000,
-    sleepAfter: 10 * 60 * 1000,
     chatterChance: 0.35,
     walkSpeed: 2,
     runSpeed: 5,
+    spriteScale: 1,
   }
 
   // Aktivitas acak + bobot kemunculannya. Animasi yang sekarang punya pemicu
-  // sendiri (mode, pengingat, klik, chat) sengaja tidak masuk sini supaya
+  // sendiri (sapaan, mode, pengingat, klik, chat) sengaja tidak masuk sini supaya
   // tidak muncul di saat yang tidak berarti apa-apa.
   const activities = [
     { name: 'idle', weight: 24 },
     { name: 'idleThinking', weight: 10 },
     { name: 'walk', weight: 28 },
     { name: 'run', weight: 7 },
-    { name: 'lookAround', weight: 10 },
-    { name: 'waving', weight: 6 },
     { name: 'shocked', weight: 3 },
   ]
 
@@ -57,24 +54,18 @@
   const SLEEP_REMINDER_TO_HOUR = 3
   const SLEEP_REMINDER_INTERVAL = 45 * 60 * 1000
 
-  // Lewat jam ini pet jauh lebih cepat mengantuk
-  const NIGHT_HOUR = 21
-  const MORNING_HOUR = 5
-  const NIGHT_SLEEP_AFTER = 60 * 1000
+  // Tendangan hanya selingan sesekali dalam rutinitas bosan.
+  const BORED_KICK_COOLDOWN = 90 * 1000
+  const BORED_KICK_CHANCE = 0.12
 
-  // Berapa lama pose duduk mengantuk diulang sebelum turun ke posisi tidur
-  const SLEEPY_DURATION = 6000
-
-  const WATER_INTERVAL = 2 * 60 * 60 * 1000
-
-  // Prompt chat yang lebih lama dari ini: pet berhenti "ikut ngoding" dan
-  // mulai celingukan lalu menunggu.
+  // Prompt chat yang lebih lama dari ini: bubble-nya diganti jadi "masih
+  // mikir", tapi animasinya tetap usingLaptop.
   const LONG_PROMPT_AFTER = 8000
 
   // Mode diurutkan dari yang paling menang kalau dinyalakan bersamaan
   const MODE_ANIMATIONS = [
     ['reading', 'reading'],
-    ['music', 'dancing'],
+    ['music', 'listeningMusic'],
     ['coding', 'usingLaptop'],
     ['focus', 'usingLaptop'],
   ]
@@ -88,15 +79,17 @@
   let activityTimer = null
   let walkTimer = null
   let gazeTimer = null
-  let waterTimer = null
   let sleepReminderTimer = null
   let longPromptTimer = null
+  let kickImpactTimer = null
 
   let paused = false
   let asleep = false
   let chatBusy = false
+  let scrollThinking = false
   let lastInteraction = Date.now()
   let lastBoredAt = 0
+  let lastCounterKickAt = 0
 
   let modes = {
     reading: false,
@@ -114,17 +107,6 @@
     return from <= to
       ? hour >= from && hour < to
       : hour >= from || hour < to
-  }
-
-  function isNight() {
-    return hourWithin(new Date().getHours(), NIGHT_HOUR, MORNING_HOUR)
-  }
-
-  function sleepThreshold() {
-    // Lewat jam malam, diam sebentar saja sudah cukup untuk tidur
-    return isNight()
-      ? Math.min(config.sleepAfter, NIGHT_SLEEP_AFTER)
-      : config.sleepAfter
   }
 
   function activeMode() {
@@ -180,11 +162,12 @@
     gazeTimer = null
   }
 
-  // Dipakai di tiap peralihan aktivitas: dua-duanya memegang frame pet
-  // lewat timer sendiri, jadi harus mati bareng.
+  // Gerak berkala dan benturan tertunda harus berhenti saat aktivitas berganti.
   function stopMotion() {
     stopWalking()
     stopGazing()
+    clearTimeout(kickImpactTimer)
+    kickImpactTimer = null
   }
 
   // Berdiri diam sambil mengikuti kursor. Frame pandangan tidak diputar
@@ -283,7 +266,16 @@
 
     const { bounds, workArea } = info
     const minX = workArea.x
-    const maxX = workArea.x + workArea.width - bounds.width
+    const maxX = Math.min(
+      workArea.x + workArea.width - bounds.width,
+      info.walkMaxX ?? Infinity,
+    )
+
+    if (maxX <= minX) {
+      playAnimation('idle')
+      scheduleNext(randomBetween(800, 2500))
+      return
+    }
 
     let direction = Math.random() < 0.5 ? -1 : 1
 
@@ -301,7 +293,14 @@
       : randomBetween(2500, 7000)
 
     let x = bounds.x
-    const startedAt = Date.now()
+    let startedAt = Date.now()
+
+    // Skipping dan gestur lucu menyela jalan biasa, bukan lari. Gerak
+    // mendatar tetap berlanjut selama sprite melompat.
+    let accentEligibleCheckedAt = startedAt
+    let accentCooldownUntil = 0
+    let playingAccent = false
+    let turning = false
 
     setFacing(direction === -1 ? 'left' : 'right')
     playAnimation(isRunning ? 'run' : 'walk')
@@ -310,22 +309,74 @@
     stopMotion()
 
     walkTimer = setInterval(() => {
-      if (paused || asleep) {
+      if (paused || asleep || turning) {
         return
       }
 
-      x += direction * speed
+      const nextX = x + direction * speed
 
-      if (x <= minX || x >= maxX) {
-        direction *= -1
-        x = Math.min(Math.max(x, minX), maxX)
+      if (nextX <= minX || nextX >= maxX) {
+        const edgeX = Math.min(Math.max(nextX, minX), maxX)
 
-        setFacing(direction === -1 ? 'left' : 'right')
+        window.petAPI.moveBy(edgeX - x, 0)
+        x = edgeX
+        turning = true
+        playingAccent = false
+
+        const turnStartedAt = Date.now()
+
+        playAnimation('lookAround', {
+          onEnd: () => {
+            if (!walkTimer || paused || asleep) {
+              return
+            }
+
+            startedAt += Date.now() - turnStartedAt
+            direction *= -1
+            setFacing(direction === -1 ? 'left' : 'right')
+            playAnimation(isRunning ? 'run' : 'walk')
+            turning = false
+          },
+        })
+
+        return
       }
 
+      x = nextX
       window.petAPI.moveBy(direction * speed, 0)
 
-      if (Date.now() - startedAt >= duration) {
+      const now = Date.now()
+
+      if (
+        !isRunning
+        && !playingAccent
+        && now - startedAt >= 1600
+        && now >= accentCooldownUntil
+        && now - accentEligibleCheckedAt >= 1200
+        && Math.min(x - minX, maxX - x) > speed * 24
+      ) {
+        accentEligibleCheckedAt = now
+
+        if (Math.random() < 0.22) {
+          playingAccent = true
+          accentCooldownUntil = now + 5500
+          const accent = now - startedAt >= 4000 && Math.random() < 0.36
+            ? 'walkCute'
+            : 'skipping'
+
+          playAnimation(accent, {
+            onEnd: () => {
+              playingAccent = false
+
+              if (walkTimer) {
+                playAnimation('walk')
+              }
+            },
+          })
+        }
+      }
+
+      if (now - startedAt >= duration && !playingAccent) {
         stopWalking()
         setFacing('right')
         playAnimation('idle')
@@ -351,46 +402,177 @@
     scheduleNext(duration)
   }
 
-  // Celingukan satu putaran penuh dulu, baru lanjut ke animasi berikutnya
-  function playLookAroundThen(next) {
-    playAnimation('lookAround')
+  // Setelah bosan, pet tetap terjaga: menunggu, melirik, berjalan, atau
+  // sesekali mengusik counter. Dialog bosan hanya muncul sekali tiap kali
+  // pengguna meninggalkannya.
+  function runBoredActivity() {
+    if (!lastBoredAt) {
+      lastBoredAt = Date.now()
 
-    clearTimeout(activityTimer)
-    activityTimer = setTimeout(next, animationDuration('lookAround'))
-  }
+      const line = pickLine('bored')
 
-  // Tidak ada interaksi: pet mencari pengguna dulu, lalu berdiri menunggu.
-  // Selama masih sepi, dia bertahan di pose menunggu; celingukannya baru
-  // diulang sekali tiap periode boredAfter supaya tidak gelisah terus.
-  function goBored() {
-    const startOver = Date.now() - lastBoredAt >= config.boredAfter
-
-    if (!startOver) {
-      if (getCurrentAnimation() !== 'waiting') {
-        playAnimation('waiting')
+      if (line) {
+        showBubble(line)
       }
 
-      scheduleNext(randomBetween(8000, 15000))
-
+      playAnimation('waiting')
+      scheduleNext(randomBetween(8000, 12000))
       return
     }
 
-    lastBoredAt = Date.now()
+    const roll = Math.random()
 
-    const line = pickLine('bored')
-
-    if (line) {
-      showBubble(line)
+    if (
+      roll < BORED_KICK_CHANCE
+      && Date.now() - lastCounterKickAt >= BORED_KICK_COOLDOWN
+    ) {
+      kickBoredCounter()
+      return
     }
 
-    playLookAroundThen(() => {
-      maybeChatter('waiting')
-      playAnimation('waiting')
+    if (roll < 0.42) {
+      startWalk(false)
+      return
+    }
 
-      scheduleNext(randomBetween(8000, 15000))
+    if (roll < 0.57) {
+      playOneShot('lookAround')
+      return
+    }
+
+    if (getCurrentAnimation() !== 'waiting') {
+      playAnimation('waiting')
+    }
+
+    scheduleNext(randomBetween(9000, 16000))
+  }
+
+  // Selingan langka: pet menghampiri widget pat lalu menendangnya pelan.
+  // Angka pat tidak berubah; widget hanya bergoyang.
+  async function kickBoredCounter() {
+    const interactionAt = lastInteraction
+
+    lastCounterKickAt = Date.now()
+    stopMotion()
+    clearTimeout(activityTimer)
+
+    let destination
+
+    try {
+      destination = await window.petAPI.getCounterTarget()
+    }
+    catch (error) {
+      console.warn('Gagal mencari pat counter:', error)
+    }
+
+    const interrupted = () => (
+      paused || asleep || chatBusy || lastInteraction !== interactionAt
+    )
+
+    if (interrupted()) {
+      if (!paused && !asleep && !chatBusy) {
+        scheduleNext(800)
+      }
+      return
+    }
+
+    if (!destination) {
+      startWalk(false)
+      return
+    }
+
+    const { bounds, target, sameDisplay } = destination
+    let x = bounds.x
+    let y = bounds.y
+
+    function finishApproach() {
+      stopWalking()
+      window.petAPI.setPosition(target.x, target.y)
+      window.petAPI.raise()
+      setFacing('right')
+
+      const line = pickLine('kickCounter')
+
+      if (line) {
+        showBubble(line)
+      }
+
+      playAnimation('kickCounter', {
+        onEnd: () => {
+          if (interrupted()) {
+            if (!paused && !asleep && !chatBusy) {
+              playAnimation('idle')
+              scheduleNext(800)
+            }
+            return
+          }
+
+          playAnimation('waiting')
+          scheduleNext(randomBetween(9000, 16000))
+        },
+      })
+
+      // Frame tendang mulai pada 170 ms; benturan badge sedikit sesudahnya.
+      kickImpactTimer = setTimeout(() => {
+        kickImpactTimer = null
+
+        if (!interrupted()) {
+          window.petAPI.kickCounter()
+        }
+      }, 240)
+    }
+
+    // Kalau Jinshi berada di sisi lain counter, lintasan lurusnya akan
+    // menembus badge. Pindahkan ke sisi tendang yang aman dulu.
+    if (!sameDisplay || x > target.x) {
+      finishApproach()
+      return
+    }
+
+    const distance = Math.hypot(target.x - x, target.y - y)
+
+    if (distance <= 12) {
+      finishApproach()
+      return
+    }
+
+    setFacing(target.x < x ? 'left' : 'right')
+    playAnimation('run')
+
+    walkTimer = setInterval(() => {
+      if (interrupted()) {
+        stopWalking()
+
+        if (!paused && !asleep && !chatBusy) {
+          playAnimation('idle')
+          scheduleNext(800)
+        }
+        return
+      }
+
+      const dx = target.x - x
+      const dy = target.y - y
+      const remaining = Math.hypot(dx, dy)
+
+      if (remaining <= 12) {
+        finishApproach()
+        return
+      }
+
+      x += dx / remaining * 12
+      y += dy / remaining * 12
+      window.petAPI.setPosition(Math.round(x), Math.round(y))
+    }, STEP_INTERVAL)
+  }
+
+  // Tidur tetap bisa diminta lewat menu. Transisi berakhir di napas tidur.
+  function playSleepTransition() {
+    playAnimation('drowsyToSleep', {
+      onEnd: () => playAnimation('sleepBreathing'),
     })
   }
 
+  // Hanya dipanggil langsung (menu "tidur sekarang" / uji manual).
   function goSleep() {
     asleep = true
 
@@ -399,16 +581,7 @@
     clearTimeout(longPromptTimer)
 
     setFacing('right')
-
-    // Pose duduk mengantuk diulang beberapa detik, baru telungkup tidur.
-    // `onEnd` kosong supaya frame tidur terakhir tidak balik ke idle.
-    playAnimation('sleepy')
-
-    clearTimeout(activityTimer)
-    activityTimer = setTimeout(
-      () => playAnimation('sleep', { onEnd: () => {} }),
-      SLEEPY_DURATION,
-    )
+    playSleepTransition()
 
     const line = pickLine('sleep')
 
@@ -423,13 +596,17 @@
       return
     }
 
+    // Tidur yang diminta pengguna bertahan sampai ia membangunkan pet.
+    if (asleep) {
+      return
+    }
+
     stopGazing()
 
     const idleFor = Date.now() - lastInteraction
 
-    // Mode aktif menggantikan aktivitas acak: pet menemani dengan satu
-    // animasi yang sesuai. Selama modenya menyala dia tidak tidur dan tidak
-    // bosan — pengguna memang sedang sibuk, bukan pergi.
+    // Mode aktif menggantikan aktivitas acak dan bosan: pengguna memang
+    // sedang sibuk, bukan pergi.
     const mode = modeAnimation()
 
     if (mode) {
@@ -446,13 +623,8 @@
       return
     }
 
-    if (idleFor >= sleepThreshold()) {
-      goSleep()
-      return
-    }
-
     if (idleFor >= config.boredAfter) {
-      goBored()
+      runBoredActivity()
       return
     }
 
@@ -484,7 +656,7 @@
   // aktivitas biasa. Diabaikan kalau pet tidur, diangkat, atau lagi dipakai.
   function playReminder(animation, lineKey) {
     if (paused || asleep || chatBusy) {
-      return
+      return false
     }
 
     stopMotion()
@@ -504,17 +676,49 @@
         scheduleNext(randomBetween(1500, 3000))
       },
     })
+
+    return true
+  }
+
+  // Dipicu sekali sehari kalau lewat semalaman tanpa dipat sama sekali
+  // (lihat affection:check di main process). Beda dari playReminder: ini
+  // kejadian langka yang tidak boleh terlewat begitu saja, jadi kalau pet
+  // kebetulan sedang tidur dia dibangunkan dulu, dan kalau sedang dijeda
+  // (diseret / dipat / chat) dicoba lagi sebentar lagi alih-alih dilewati.
+  //
+  // Animasi khusus sulky diputar sekali, lalu pet kembali beraktivitas.
+  function showSulk(likes) {
+    if (paused || chatBusy) {
+      setTimeout(() => showSulk(likes), 5000)
+      return
+    }
+
+    stopMotion()
+    clearTimeout(activityTimer)
+    clearTimeout(longPromptTimer)
+
+    asleep = false
+    lastInteraction = Date.now()
+    lastBoredAt = 0
+
+    setFacing('right')
+
+    const line = pickLine('sulk')
+
+    if (line) {
+      showBubble(line.replace('{likes}', String(likes)))
+    }
+
+    playAnimation('sulky', {
+      onEnd: () => {
+        playAnimation('idle')
+        scheduleNext(randomBetween(1500, 3000))
+      },
+    })
   }
 
   function startReminders() {
-    clearInterval(waterTimer)
     clearInterval(sleepReminderTimer)
-
-    // Minum diingatkan tiap dua jam selama aplikasi menyala
-    waterTimer = setInterval(
-      () => playReminder('waterReminder', 'waterReminder'),
-      WATER_INTERVAL,
-    )
 
     sleepReminderTimer = setInterval(() => {
       const hour = new Date().getHours()
@@ -529,14 +733,15 @@
 
   function wake(options = {}) {
     const wasAsleep = asleep
-    const wasLyingDown = getCurrentAnimation() === 'sleep'
+    const wasLyingDown = getCurrentAnimation() === 'sleepBreathing'
 
     asleep = false
     lastInteraction = Date.now()
     lastBoredAt = 0
 
-    // Transisi sleepy -> sleep mungkin masih menunggu; kalau tidak dibatalkan
-    // dia akan memotong animasi bangun.
+    // Jeda antar-klip mengantuk atau transisi ke sleep mungkin masih
+    // menunggu di `activityTimer`; kalau tidak dibatalkan dia akan
+    // memotong animasi bangun begitu waktunya tiba.
     clearTimeout(activityTimer)
     stopGazing()
 
@@ -629,8 +834,9 @@
     scheduleNext(delay)
   }
 
-  // Prompt chat sedang diproses: pet ikut "kerja" di laptop. Kalau
-  // jawabannya lama, dia celingukan lalu berdiri menunggu.
+  // Prompt chat sedang diproses: pet ikut "kerja" di laptop, dan tetap di
+  // situ selama masih diproses — kalau jawabannya lama, yang berubah cuma
+  // bubble-nya jadi "masih mikir", bukan animasinya.
   function setChatBusy(value) {
     chatBusy = Boolean(value)
 
@@ -655,20 +861,39 @@
         return
       }
 
-      playAnimation('lookAround')
-
-      longPromptTimer = setTimeout(() => {
-        if (!chatBusy) {
-          return
-        }
-
-        showBubble(pickLine('thinkingLong'), { sticky: true, thinking: true })
-        playAnimation('waiting')
-      }, animationDuration('lookAround'))
+      showBubble(pickLine('thinkingLong'), { sticky: true, thinking: true })
     }, LONG_PROMPT_AFTER)
   }
 
-  // Mode diganti dari menu klik-kanan: pet langsung pindah ke animasi
+  // Scroll global terdeteksi di mana pun (lihat main/scroll-watch.js), bukan
+  // cuma di atas pet -- dipakai sebagai sinyal "sedang menyimak layarnya",
+  // pet ikut memasang wajah berpikir selama rentetan scroll-nya berlangsung.
+  // scrollThinking dilacak terpisah dari `paused` supaya tidak menimpa atau
+  // ikut membatalkan jeda dari drag/pat/chat yang sedang berlangsung.
+  function setScrollActive(active) {
+    if (active) {
+      if (scrollThinking || paused || chatBusy || asleep) {
+        return
+      }
+
+      scrollThinking = true
+
+      notifyInteraction()
+      pause()
+      playAnimation('idleThinking')
+
+      return
+    }
+
+    if (!scrollThinking) {
+      return
+    }
+
+    scrollThinking = false
+    resume(400)
+  }
+
+  // Mode diganti dari panel atau menu klik-kanan: pet langsung pindah ke animasi
   // yang sesuai, tidak menunggu aktivitas berjalan selesai.
   function applyModes(next) {
     const before = modeAnimation()
@@ -712,21 +937,64 @@
     scheduleNext(200)
   }
 
-  function applySettings(settings) {
-    config = { ...config, ...(settings?.behavior ?? {}) }
+  function setInitialModes(next) {
+    modes = { ...modes, ...(next ?? {}) }
   }
 
-  function start() {
-    startReminders()
+  // Dibatasi supaya sprite-nya tidak kepotong jendela pet yang ukurannya
+  // tetap (lihat PET_WIDTH/PET_HEIGHT di main/constants.js) -- jendelanya
+  // sendiri sengaja tidak ikut di-resize, biar posisi di layar tidak
+  // meloncat tiap skalanya diganti.
+  const SPRITE_SCALE_MIN = 0.7
+  const SPRITE_SCALE_MAX = 1.6
+
+  function applySettings(settings) {
+    config = { ...config, ...(settings?.behavior ?? {}) }
+
+    const scale = Math.min(
+      Math.max(config.spriteScale ?? 1, SPRITE_SCALE_MIN),
+      SPRITE_SCALE_MAX,
+    )
+
+    document.documentElement.style.setProperty('--pet-scale', scale)
+  }
+
+  function greet({ withBubble = false, afterWave = null } = {}) {
+    asleep = false
+    paused = false
+    scrollThinking = false
+    lastInteraction = Date.now()
+    lastBoredAt = 0
+    stopMotion()
+    clearTimeout(activityTimer)
+    hideBubble()
+    setFacing('right')
 
     playAnimation('waving', {
       onEnd: () => {
+        if (afterWave) {
+          afterWave()
+          return
+        }
+
+        if (chatBusy) {
+          playAnimation('usingLaptop')
+          return
+        }
+
         playAnimation('idle')
         scheduleNext(1500)
       },
     })
 
-    showBubble(pickLine('greeting'))
+    if (withBubble) {
+      showBubble(pickLine('greeting'))
+    }
+  }
+
+  function start(options = {}) {
+    startReminders()
+    greet({ ...options, withBubble: options.afterWave == null })
   }
 
   window.petBehavior = {
@@ -735,27 +1003,37 @@
     resume,
     wake,
     sleepNow: goSleep,
+    sulk: showSulk,
     notifyInteraction,
     applySettings,
     setChatBusy,
+    setScrollActive,
     applyModes,
+    setInitialModes,
+    greetAfterDeviceActive: () => greet(),
     getModes: () => ({ ...modes }),
 
     // Pengingat aslinya dipicu timer; dibuka juga supaya bisa diuji manual
     remindWater: () => playReminder('waterReminder', 'waterReminder'),
     remindSleep: () => playReminder('hugPlushie', 'sleepReminder'),
 
-    // Bosan aslinya baru datang setelah beberapa menit tanpa interaksi.
-    // Dibuka supaya pose menunggunya bisa diuji tanpa menunggu selama itu.
+    // Jalur bosan bisa dicoba langsung dari DevTools tanpa menunggu ambang.
     boredNow: () => {
       paused = false
+      asleep = false
       lastInteraction = Date.now() - config.boredAfter
-
-      // Celingukannya dilewati: yang diuji pose menunggunya
-      lastBoredAt = Date.now()
-
+      lastBoredAt = 0
       stopMotion()
-      goBored()
+      clearTimeout(activityTimer)
+      runBoredActivity()
+    },
+
+    kickCounterNow: () => {
+      paused = false
+      asleep = false
+      lastInteraction = Date.now() - config.boredAfter
+      lastBoredAt = Date.now()
+      kickBoredCounter()
     },
 
     // Aslinya pandangan cuma muncul sebagai aktivitas acak, jadi susah

@@ -1,0 +1,41 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "dark-glow",
+        "value": "*",
+        "files": [
+          "src/renderer/chat/chat.html"
+        ],
+        "createdAt": "2026-09-24T03:00:17.981Z",
+        "reason": "user confirmed: intentional micro-detail on the online-status dot (Discord/Slack-style convention), not a broad AI-glow-everywhere pattern"
+      },
+      {
+        "rule": "tiny-text",
+        "value": "*",
+        "files": [
+          "src/renderer/chat/chat.html"
+        ],
+        "createdAt": "2026-09-24T03:00:18.016Z",
+        "reason": "user confirmed: intentional compact/ornate typography density from the recent redesign, consistent throughout the window"
+      },
+      {
+        "rule": "undersized-ui-text",
+        "value": "*",
+        "files": [
+          "src/renderer/chat/chat.html"
+        ],
+        "createdAt": "2026-09-24T03:09:37.685Z",
+        "reason": "user confirmed same values (message timestamps, topbar meta rows, mode-bar text at 9-10px) as intentional compact/ornate density in prior turn under the related tiny-text finding"
+      },
+      {
+        "rule": "bounce-easing",
+        "value": "counter-wobble",
+        "createdAt": "2026-09-24T08:06:47.958Z",
+        "reason": "physically-motivated kick-impact wobble (decaying oscillation, each swing smaller than the last) for the pat-counter widget's is-kicked reaction, not decorative UI-chrome bounce/spring-in polish the rule targets"
+      }
+    ]
+  }
+}

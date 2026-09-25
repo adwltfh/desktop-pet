@@ -7,41 +7,71 @@ function settingsFile() {
   return path.join(app.getPath('userData'), 'settings.json')
 }
 
+// Sumber kebenaran persona default: vault Obsidian personality/ di root
+// proyek (satu catatan .md per topik, dihubungkan pakai [[wikilink]] biasa)
+// supaya gampang dibaca/ditata/dihubung-hubungkan langsung tanpa buka
+// Setting. Semua catatan digabung apa adanya -- link [[...]] dibiarkan jadi
+// teks biasa, model tetap paham itu sebagai rujukan antar topik. Setelah
+// tersimpan ke settings.json (lewat Setting atau setelah pertama jalan),
+// perubahan di vault tidak lagi otomatis terpakai -- itu jadi override
+// milik pengguna.
+function loadDefaultPersona() {
+  const dir = path.join(__dirname, '..', '..', 'personality')
+
+  try {
+    const notes = fs.readdirSync(dir)
+      .filter(name => name.endsWith('.md'))
+      .sort()
+
+    const sections = notes.map(name => {
+      const raw = fs.readFileSync(path.join(dir, name), 'utf8')
+
+      // Baris heading '# Judul' di awal tiap catatan dibuang, sisanya dipakai apa adanya
+      return raw.replace(/^#.*\n+/, '').trim()
+    })
+
+    return sections.filter(Boolean).join('\n\n')
+  }
+  catch (error) {
+    console.error('Gagal membaca vault personality/, pakai persona kosong:', error)
+
+    return ''
+  }
+}
+
 const defaultSettings = {
   provider: 'claude',
 
   models: {
     claude: 'claude-opus-5',
+    'claude-api': 'claude-opus-5',
     chatgpt: 'gpt-4o-mini',
   },
 
   petName: 'Jinshi',
 
   // Persona dikirim sebagai system prompt
-  persona: [
-    'Kamu seorang pemuda rupawan dari istana: wajahmu memukau, gerak-gerikmu anggun,',
-    'dan suaramu tenang. Tutur katamu halus, sopan, sesekali menggoda dengan santai,',
-    'tapi perhatianmu tulus. Kamu percaya diri tanpa sombong, sabar, dan diam-diam',
-    'senang kalau diperhatikan. Panggil pengguna dengan akrab dan hangat, jangan kaku.',
-  ].join(' '),
+  persona: loadDefaultPersona(),
 
   behavior: {
     // Berapa lama tanpa interaksi sebelum pet bosan (ms)
     boredAfter: 3 * 60 * 1000,
-
-    // Berapa lama tanpa interaksi sebelum pet tidur (ms)
-    sleepAfter: 10 * 60 * 1000,
 
     // Peluang bubble dialog muncul setiap ganti aktivitas (0 - 1)
     chatterChance: 0.35,
 
     walkSpeed: 2,
     runSpeed: 5,
+
+    // Faktor skala sprite pet, dibatasi 0.7-1.6 di behavior.js supaya tidak
+    // kepotong jendela pet yang ukurannya tetap.
+    spriteScale: 1,
   },
 
-  // Disimpan terenkripsi bila OS mendukung
+  // Disimpan terenkripsi bila OS mendukung. Provider 'claude' (CLI lokal)
+  // tidak butuh key di sini -> login-nya terpisah lewat `claude login`.
   apiKeys: {
-    claude: null,
+    'claude-api': null,
     chatgpt: null,
   },
 }
@@ -134,7 +164,7 @@ function getApiKey(provider) {
 
   if (!stored) {
     // Fallback ke environment variable supaya gampang dipakai saat development
-    const fallback = provider === 'claude'
+    const fallback = provider === 'claude-api'
       ? process.env.ANTHROPIC_API_KEY
       : process.env.OPENAI_API_KEY
 
@@ -165,7 +195,7 @@ function publicSettings() {
     behavior: settings.behavior,
 
     hasKey: {
-      claude: Boolean(getApiKey('claude')),
+      'claude-api': Boolean(getApiKey('claude-api')),
       chatgpt: Boolean(getApiKey('chatgpt')),
     },
 
@@ -174,8 +204,6 @@ function publicSettings() {
 }
 
 module.exports = {
-  settingsFile,
-  defaultSettings,
   readSettings,
   writeSettings,
   setApiKey,

@@ -1,26 +1,30 @@
 const { app, Menu } = require('electron')
 
-const { petModes } = require('./state')
+const affection = require('./affection')
+const state = require('./state')
 const {
   keepOnTop,
   sendToPet,
+  broadcastModeState,
   createChatWindow,
   createTesterWindow,
   getPetWindow,
 } = require('./windows')
 
-// Dipakai submenu Mode (sedang dikomentari di showPetMenu)
 function toggleMode(name) {
-  if (!(name in petModes)) {
+  if (state.getModeState().selection === name) {
     return
   }
 
-  petModes[name] = !petModes[name]
+  if (!state.selectMode(name)) {
+    return
+  }
 
-  sendToPet('pet:modes', { ...petModes })
+  broadcastModeState()
 }
 
 function showPetMenu() {
+  const selectedMode = state.getModeState().selection
   const menu = Menu.buildFromTemplate([
     {
       label: 'Ngobrol...',
@@ -44,42 +48,58 @@ function showPetMenu() {
       click: () => sendToPet('pet:command', { action: 'random' }),
     },
 
-    // { type: 'separator' },
+    // Uji manual reaksi ngambek tanpa perlu menunggu satu hari penuh kelewat
+    // tanpa dipat. Tidak memotong like sungguhan -- cuma menampilkan reaksi
+    // dengan angka like yang berlaku sekarang.
+    {
+      label: 'Uji ngambek',
+      click: () => sendToPet('pet:command', {
+        action: 'sulk',
+        likes: affection.getAffection().likes,
+      }),
+    },
 
-    // SEMENTARA DIMATIKAN untuk uji coba. Hapus komentarnya untuk
-    // mengembalikan submenu Mode.
-    // {
-    //   label: 'Mode',
-    //   submenu: [
-    //     {
-    //       label: 'Baca',
-    //       type: 'checkbox',
-    //       checked: petModes.reading,
-    //       click: () => toggleMode('reading'),
-    //     },
-    //
-    //     {
-    //       label: 'Musik',
-    //       type: 'checkbox',
-    //       checked: petModes.music,
-    //       click: () => toggleMode('music'),
-    //     },
-    //
-    //     {
-    //       label: 'Ngoding',
-    //       type: 'checkbox',
-    //       checked: petModes.coding,
-    //       click: () => toggleMode('coding'),
-    //     },
-    //
-    //     {
-    //       label: 'Fokus',
-    //       type: 'checkbox',
-    //       checked: petModes.focus,
-    //       click: () => toggleMode('focus'),
-    //     },
-    //   ],
-    // },
+    { type: 'separator' },
+
+    {
+      label: 'Mode',
+      submenu: [
+        {
+          label: 'Auto',
+          type: 'radio',
+          checked: selectedMode === 'auto',
+          click: () => toggleMode('auto'),
+        },
+
+        {
+          label: 'Baca',
+          type: 'radio',
+          checked: selectedMode === 'reading',
+          click: () => toggleMode('reading'),
+        },
+
+        {
+          label: 'Musik',
+          type: 'radio',
+          checked: selectedMode === 'music',
+          click: () => toggleMode('music'),
+        },
+
+        {
+          label: 'Kerja / ngoding',
+          type: 'radio',
+          checked: selectedMode === 'coding',
+          click: () => toggleMode('coding'),
+        },
+
+        {
+          label: 'Fokus',
+          type: 'radio',
+          checked: selectedMode === 'focus',
+          click: () => toggleMode('focus'),
+        },
+      ],
+    },
 
     {
       label: 'Uji animasi...',

@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'" />
+    <link rel="stylesheet" href="../shared/glass.css" />
+    <link rel="stylesheet" href="./style.css" />
+    <title>Jelajahi file</title>
+  </head>
+
+  <body>
+    <main class="glass explorer" aria-label="Jelajahi file">
+      <header class="masthead">
+        <div class="masthead__copy">
+          <h1>Jelajahi file</h1>
+          <p>Jinshi bantu cari yang kamu perlu</p>
+        </div>
+        <img class="masthead__jinshi" src="../pet/assets/frames/idle-blink/02.png" alt="" />
+        <button type="button" class="close" id="close" aria-label="Tutup panel">
+          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M5 5l10 10M15 5 5 15" /></svg>
+        </button>
+      </header>
+
+      <form class="search" id="search-form">
+        <label class="visually-hidden" for="query">Cari nama file lewat Spotlight</label>
+        <span class="search__icon" aria-hidden="true"><svg viewBox="0 0 20 20" fill="none"><circle cx="8.5" cy="8.5" r="5.5" /><path d="m13 13 4 4" /></svg></span>
+        <input id="query" type="search" placeholder="Cari file di Mac..." autocomplete="off" />
+        <button type="submit" id="search-button">Cari</button>
+      </form>
+
+      <section class="shortcuts" aria-label="Folder cepat">
+        <div class="section-label"><span>Folder cepat</span><span>4 lokasi</span></div>
+        <nav class="shortcuts__links" aria-label="Folder cepat">
+          <button type="button" id="home"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m2.5 9 7.5-6 7.5 6v8h-5v-5h-5v5h-5z" /></svg><span>Home</span></button>
+          <button type="button" id="documents"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 3.5h5l2 2h5v11H4z" /><path d="M6.5 9h7M6.5 12h5" /></svg><span>Dokumen</span></button>
+          <button type="button" id="downloads"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 2.5v9m-3-3 3 3 3-3M3.5 13.5v3h13v-3" /></svg><span>Unduhan</span></button>
+          <button type="button" id="root"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3 4.5h14v11H3zM3 8h14M6 12h3" /></svg><span>Root /</span></button>
+        </nav>
+      </section>
+
+      <form class="location" id="location-form">
+        <label for="location">Lokasi sekarang</label>
+        <div class="location__bar">
+          <button type="button" id="parent" aria-label="Naik ke folder induk" title="Naik ke folder induk"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m12.5 4-6 6 6 6" /></svg></button>
+          <input id="location" type="text" spellcheck="false" autocomplete="off" aria-label="Lokasi folder" />
+          <button type="submit" aria-label="Buka lokasi" title="Buka lokasi"><svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 10h12m-5-5 5 5-5 5" /></svg></button>
+        </div>
+      </form>
+
+      <section class="files" aria-label="Daftar file dan folder">
+        <div class="files__heading"><h2 id="list-title">Home</h2><span id="count"></span></div>
+        <p class="status" id="status" role="status" aria-live="polite" hidden></p>
+        <div class="entries" id="entries" role="region" aria-label="File dan folder"></div>
+      </section>
+      <p class="hint">Folder dibuka di sini · File dibuka di aplikasi Mac</p>
+    </main>
+
+    <script src="./search-app.js"></script>
+  </body>
+</html>

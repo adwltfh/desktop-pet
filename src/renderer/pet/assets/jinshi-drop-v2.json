@@ -1,0 +1,23 @@
+{
+  "image": "jinshi-drop-v2.png",
+  "layout": "packed",
+  "columns": 8,
+  "cellHeight": 724,
+  "frameCrops": [
+    { "x": 0, "width": 263, "top": 155, "scaledWidth": 87 },
+    { "x": 263, "width": 267, "top": 185, "scaledWidth": 89 },
+    { "x": 530, "width": 277, "top": 209, "scaledWidth": 92 },
+    { "x": 807, "width": 273, "top": 214, "scaledWidth": 91 },
+    { "x": 1080, "width": 272, "top": 215, "scaledWidth": 90 },
+    { "x": 1352, "width": 268, "top": 217, "scaledWidth": 89 },
+    { "x": 1620, "width": 268, "top": 214, "scaledWidth": 89 },
+    { "x": 1888, "width": 284, "top": 214, "scaledWidth": 94 }
+  ],
+  "cropHeight": 410,
+  "scaledHeight": 136,
+  "topPadding": 5,
+  "frameSize": { "width": 151, "height": 149 },
+  "animations": {
+    "drop": { "frames": 8, "folder": "drop" }
+  }
+}

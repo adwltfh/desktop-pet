@@ -97,6 +97,7 @@
 
     currentAnimation = name
     currentFrame = 0
+    pet.dataset.animation = name
 
     showFrame(animation, 0)
 
@@ -175,6 +176,7 @@
 
     currentAnimation = 'gaze'
     currentFrame = index
+    pet.dataset.animation = 'gaze'
 
     applyTilt()
     petSprite.src = GAZE_FRAMES[index]
@@ -222,16 +224,22 @@
     const names = Object.keys(animations).filter(
       name => ![
         'drag',
-        'dragLeft',
-        'dragRight',
+        'dragHeld',
+        'skipping',
+        'kickCounter',
         'drop',
         'sleepy',
-        'sleep',
+        'drowsyBlink',
+        'drowsyYawn',
+        'drowsyMicroDoze',
+        'drowsyToSleep',
+        'sleepBreathing',
         'wakeUp',
         'laptopClose',
         'bookClose',
         'pattingEnd',
         'waitingNotice',
+        'lookAround',
       ].includes(name),
     )
 

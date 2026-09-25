@@ -10,23 +10,42 @@
 
     <link rel="stylesheet" href="./chat.css" />
 
-    <title>Ngobrol sama pet</title>
+    <title>Paviliun Jinshi</title>
   </head>
 
   <body>
+    <div class="frame-corners" aria-hidden="true">
+      <span class="frame-corners__corner frame-corners__corner--top-left"></span>
+      <span class="frame-corners__corner frame-corners__corner--top-right"></span>
+      <span class="frame-corners__corner frame-corners__corner--bottom-left"></span>
+      <span class="frame-corners__corner frame-corners__corner--bottom-right"></span>
+    </div>
     <header class="topbar">
+      <div class="topbar__portrait" aria-hidden="true">
+        <img src="./assets/jinshi-portrait.jpg" alt="" />
+      </div>
+
       <div class="topbar__title">
         <strong id="pet-name">Pet</strong>
-        <span id="provider-label" class="topbar__provider">-</span>
+        <span class="topbar__presence"><span class="topbar__online-dot"></span>Paviliun pribadi <span aria-hidden="true">·</span> Online</span>
+        <span class="topbar__details">
+          <span id="provider-label" class="topbar__provider">-</span>
+          <span id="affection-label" class="topbar__affection" title="Suka. Berkurang tiap hari yang kelewat tanpa dipat. Jumlah pat harian ada di widget pojok layar."></span>
+          <span id="usage-label" class="topbar__usage" title="Model aktif & token terpakai sejak aplikasi ini dibuka. Bukan sisa limit/kuota -- Claude CLI tidak menyediakan angka itu."></span>
+        </span>
       </div>
 
       <div class="topbar__actions">
-        <button id="clear-button" type="button" class="ghost-button">
-          Hapus riwayat
+        <button id="clear-button" type="button" class="ghost-button" title="Hapus riwayat" aria-label="Hapus riwayat">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7M3 4v5h5"/><path d="M12 7v5l3 2"/></svg>
         </button>
 
-        <button id="settings-button" type="button" class="ghost-button">
-          Setting
+        <button id="memory-log-button" type="button" class="ghost-button" title="Catatan belajar" aria-label="Catatan belajar" aria-controls="memory-panel" aria-expanded="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5c2.5-1 5-1 8 0v13c-3-1-5.5-1-8 0z"/><path d="M20 5.5c-2.5-1-5-1-8 0v13c3-1 5.5-1 8 0z"/></svg>
+        </button>
+
+        <button id="settings-button" type="button" class="ghost-button" title="Pengaturan" aria-label="Pengaturan" aria-controls="settings-panel" aria-expanded="false">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.2 2.6h3.6l.6 2.2c.5.2 1 .4 1.5.6l2-.9 2.5 2.5-.9 2c.3.5.5 1 .6 1.5l2.2.6v3.6l-2.2.6c-.2.5-.4 1-.6 1.5l.9 2-2.5 2.5-2-.9c-.5.3-1 .5-1.5.6l-.6 2.2h-3.6l-.6-2.2c-.5-.2-1-.4-1.5-.6l-2 .9-2.5-2.5.9-2c-.3-.5-.5-1-.6-1.5L1.7 14v-3.6l2.2-.6c.2-.5.4-1 .6-1.5l-.9-2 2.5-2.5 2 .9c.5-.3 1-.5 1.5-.6z"/><circle cx="12" cy="12" r="3"/></svg>
         </button>
       </div>
     </header>
@@ -36,7 +55,8 @@
         <span class="field__label">Provider</span>
 
         <select id="provider-select" class="field__input">
-          <option value="claude">Claude (Anthropic)</option>
+          <option value="claude">Claude (CLI lokal)</option>
+          <option value="claude-api">Claude (API key)</option>
           <option value="chatgpt">ChatGPT (OpenAI)</option>
         </select>
       </label>
@@ -46,7 +66,7 @@
         <input id="model-input" type="text" class="field__input" />
       </label>
 
-      <label class="field">
+      <label id="key-field" class="field">
         <span class="field__label">API key</span>
 
         <input
@@ -63,6 +83,21 @@
         <textarea id="persona-input" class="field__input" rows="4"></textarea>
       </label>
 
+      <label class="field">
+        <span class="field__label">Kecepatan jalan <output id="walk-speed-output"></output></span>
+        <input id="walk-speed-input" class="field__range" type="range" min="0.5" max="6" step="0.5" />
+      </label>
+
+      <label class="field">
+        <span class="field__label">Kecepatan lari <output id="run-speed-output"></output></span>
+        <input id="run-speed-input" class="field__range" type="range" min="1" max="10" step="0.5" />
+      </label>
+
+      <label class="field">
+        <span class="field__label">Ukuran sprite <output id="sprite-scale-output"></output></span>
+        <input id="sprite-scale-input" class="field__range" type="range" min="0.7" max="1.6" step="0.1" />
+      </label>
+
       <p id="settings-hint" class="settings__hint"></p>
 
       <button id="save-settings" type="button" class="primary-button">
@@ -70,18 +105,73 @@
       </button>
     </section>
 
-    <main id="messages" class="messages"></main>
+    <section id="memory-panel" class="settings memory-panel" hidden>
+      <p class="memory-panel__intro">
+        Jinshi otomatis mencatat kalimat yang terasa seperti aturan atau
+        kebiasaanmu — "selalu...", "jangan pernah...", "panggil aku..." —
+        plus pola kebiasaan dan ringkasan dari obrolan kita. Semua catatan
+        ini bisa diurungkan kapan saja.
+      </p>
+
+      <p id="memory-counter" class="memory-panel__counter"></p>
+
+      <div class="memory-tabs" role="tablist" aria-label="Filter catatan belajar">
+        <button type="button" class="memory-tabs__tab is-active" data-filter="all" role="tab" aria-selected="true">Semua</button>
+        <button type="button" class="memory-tabs__tab" data-filter="auto" role="tab" aria-selected="false">Auto</button>
+        <button type="button" class="memory-tabs__tab" data-filter="manual" role="tab" aria-selected="false">Manual</button>
+        <button type="button" class="memory-tabs__tab" data-filter="habit" role="tab" aria-selected="false">Kebiasaan</button>
+      </div>
+
+      <div id="memory-list" class="memory-list"></div>
+    </section>
+
+    <main id="messages" class="messages" role="log" aria-label="Percakapan" aria-live="polite"></main>
+
+    <div id="mode-bar" class="mode-bar" hidden>
+      <span class="mode-bar__label">Mode</span>
+
+      <select id="mode-select" class="mode-bar__select" aria-label="Mode percakapan" tabindex="-1">
+        <option value="auto">Otomatis</option>
+        <option value="roleplay">Roleplay</option>
+        <option value="working">Kerja</option>
+        <option value="searching">Cari</option>
+      </select>
+
+      <div class="mode-bar__options" role="group" aria-label="Mode percakapan">
+        <button type="button" class="mode-bar__option is-active" data-mode="auto" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7c-2-5-5-4-5-1 0 2 2 3 5 6-5-2-7-1-7 2 0 3 3 4 7-2-2 5-1 7 2 7 3 0 4-3-2-7 5 2 7 1 7-2 0-3-3-4-7 2 2-5 1-7-2-7"/><circle cx="12" cy="12" r="1.4"/></svg><span>Otomatis</span></button>
+        <button type="button" class="mode-bar__option" data-mode="roleplay" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 8.5c0 4.3-8.5 10-8.5 10s-8.5-5.7-8.5-10a4.7 4.7 0 0 1 8.5-2.7 4.7 4.7 0 0 1 8.5 2.7Z"/></svg><span>Manja</span></button>
+        <button type="button" class="mode-bar__option" data-mode="working" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 13h18"/></svg><span>Kerja</span></button>
+        <button type="button" class="mode-bar__option" data-mode="searching" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg><span>Cari</span></button>
+      </div>
+
+      <span id="mode-hint" class="mode-bar__hint"></span>
+    </div>
+
+    <div id="attachment-chip" class="attachment-chip" hidden>
+      <span id="attachment-chip-name" class="attachment-chip__name"></span>
+      <button type="button" id="attachment-remove" class="attachment-chip__remove" aria-label="Hapus lampiran">×</button>
+    </div>
 
     <form id="composer" class="composer">
-      <textarea
-        id="input"
-        class="composer__input"
-        rows="2"
-        placeholder="Tulis pesan... (Enter kirim, Shift+Enter baris baru)"
-      ></textarea>
+      <div class="composer__field">
+        <button type="button" id="attachment-button" class="composer__attachment" aria-label="Lampirkan berkas" title="Lampirkan berkas">
+          <svg viewBox="0 0 24 24"><path d="m8 12.5 5.9-5.9a3 3 0 0 1 4.2 4.2l-7.9 7.9a5 5 0 0 1-7.1-7.1l8.5-8.5a7 7 0 0 1 9.9 9.9l-8.2 8.2"/></svg>
+        </button>
+        <textarea
+          id="input"
+          class="composer__input"
+          rows="2"
+          placeholder="Tulis pesan untuk Jinshi..."
+          aria-label="Pesan untuk Jinshi"
+        ></textarea>
+        <span class="composer__flower" aria-hidden="true">
+          <svg viewBox="0 0 32 32"><path d="M16 3c3 4 3 8 0 11-3-3-3-7 0-11ZM29 16c-4 3-8 3-11 0 3-3 7-3 11 0ZM16 29c-3-4-3-8 0-11 3 3 3 7 0 11ZM3 16c4-3 8-3 11 0-3 3-7 3-11 0Z"/></svg>
+        </span>
+      </div>
 
       <button id="send-button" type="submit" class="primary-button">
-        Kirim
+        <span>Kirim</span>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 12 16-8-5 16-3-7-8-1Z"/><path d="m12 13 8-9"/></svg>
       </button>
     </form>
 

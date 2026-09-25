@@ -1,0 +1,31 @@
+{
+  "image": "jinshi-reactions.png",
+  "layout": "packed",
+  "columns": 8,
+  "rows": 1,
+  "frameCrops": [
+    { "x": 0, "width": 265, "scaledWidth": 96 },
+    { "x": 265, "width": 267, "scaledWidth": 97 },
+    { "x": 532, "width": 270, "scaledWidth": 98 },
+    { "x": 802, "width": 277, "scaledWidth": 101 },
+    { "x": 1079, "width": 270, "scaledWidth": 98 },
+    { "x": 1349, "width": 274, "scaledWidth": 99 },
+    { "x": 1623, "width": 270, "scaledWidth": 98 },
+    { "x": 1893, "width": 279, "scaledWidth": 101 }
+  ],
+  "cropTop": 225,
+  "cropHeight": 375,
+  "scaledHeight": 136,
+  "topPadding": 5,
+  "frameSize": {
+    "width": 151,
+    "height": 149
+  },
+  "animations": {
+    "reactions": {
+      "row": 0,
+      "frames": 8,
+      "folder": "reactions"
+    }
+  }
+}

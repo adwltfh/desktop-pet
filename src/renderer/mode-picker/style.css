@@ -1,0 +1,81 @@
+:root {
+  color-scheme: dark;
+  --ivory: #fff7f1;
+  --jade: #8ed2b3;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+.panel {
+  height: calc(100% - 6px);
+  margin: 3px;
+  padding: 6px 8px;
+  border-radius: 16px;
+}
+
+.panel__heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 3px 4px;
+  color: var(--ivory);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .13em;
+  white-space: nowrap;
+}
+
+#mode-status {
+  overflow: hidden;
+  max-width: 160px;
+  color: #eee7f1;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+}
+
+.modes {
+  display: grid;
+  grid-template-columns: 45px repeat(4, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.modes button {
+  height: 28px;
+  padding: 0 3px;
+  border: 1px solid rgba(255, 255, 255, .2);
+  border-radius: 9px;
+  background: rgba(255, 255, 255, .09);
+  color: #f4eef6;
+  cursor: pointer;
+  font: 600 11px/1 'Segoe UI', system-ui, sans-serif;
+}
+
+.modes button:hover { background: rgba(255, 255, 255, .2); }
+.modes button:focus-visible { outline: 2px solid var(--jade); outline-offset: 1px; }
+
+.modes button[aria-pressed='true'] {
+  border-color: rgba(238, 208, 161, .78);
+  background: rgba(202, 164, 109, .3);
+  color: var(--ivory);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .23);
+}
+
+.modes button[data-active='true']:not([aria-pressed='true']) {
+  color: var(--jade);
+}
+
+.modes button:active { transform: translateY(1px); }
+
+@media (prefers-reduced-motion: reduce) {
+  .modes button:active { transform: none; }
+}

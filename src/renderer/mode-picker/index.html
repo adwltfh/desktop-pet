@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data:;"
+    />
+    <link rel="stylesheet" href="../shared/glass.css" />
+    <link rel="stylesheet" href="./style.css" />
+    <title>Mode Jinshi</title>
+  </head>
+
+  <body>
+    <section class="glass panel" aria-label="Mode Jinshi">
+      <div class="panel__heading">
+        <span>MODE JINSHI</span>
+        <span id="mode-status" aria-live="polite">Otomatis · santai</span>
+      </div>
+
+      <nav class="modes" aria-label="Pilih mode">
+        <button type="button" data-mode="auto" aria-pressed="true" title="Ikuti aplikasi aktif">Auto</button>
+        <button type="button" data-mode="coding" aria-pressed="false" title="Temani bekerja atau ngoding">Kerja</button>
+        <button type="button" data-mode="music" aria-pressed="false" title="Dengarkan musik bersama">Musik</button>
+        <button type="button" data-mode="reading" aria-pressed="false" title="Baca bersama">Baca</button>
+        <button type="button" data-mode="focus" aria-pressed="false" title="Temani fokus">Fokus</button>
+      </nav>
+    </section>
+
+    <script src="./mode-picker.js"></script>
+  </body>
+</html>

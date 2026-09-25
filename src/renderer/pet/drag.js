@@ -6,40 +6,87 @@
   const { showBubble } = window.petBubble
 
   const CLICK_THRESHOLD = 4
-  const DROP_EFFECT_MS = 520
-
-  // Geser sejauh ini dulu sebelum animasi diangkat ganti arah, supaya tidak
-  // bolak-balik kanan-kiri waktu tangan bergetar sedikit.
-  const DRAG_TURN_THRESHOLD = 12
+  // Sama dengan total durasi delapan frame `drop` di animation-data.js.
+  const DROP_EFFECT_MS = 1230
 
   // Klik pet (bukan seret) = digelitik: gerakan malu-malu dulu, lalu
   // reaksi ngambek yang frame terakhirnya ditahan di animation.js.
   const TICKLE_SEQUENCE = ['cuteGesture', 'reactions']
 
+  // Diklik selagi tidur (`isAsleep()`): bukan digelitik, tapi kaget
+  // dibangunkan mendadak.
+  const STARTLED_SEQUENCE = ['shocked']
+
+  // Diklik terus-terusan dalam waktu singkat: dari geli jadi ngambek
+  // sungguhan (lihat personality/Kepribadian.md). Pola hitungnya sama
+  // seperti elusan berturut-turut di pat.js.
+  const SULKY_CLICK_SEQUENCE = ['sulky']
+  const CLICKS_TO_SULK = 4
+  const CLICK_STREAK_WINDOW_MS = 3000
+
+  // Klik kedua yang datang secepat ini dianggap dobel klik (buka chat),
+  // bukan dua klik tunggal terpisah -- reaksi klik tunggal jadi menunggu
+  // sebentar dulu sebelum benar-benar tampil, supaya bisa dibatalkan kalau
+  // ternyata klik keduanya menyusul (lihat handleClick).
+  const DOUBLE_CLICK_WINDOW_MS = 300
+
   let dragging = false
+  let dragStarted = false
   let grabX = 0
   let grabY = 0
   let startScreenX = 0
   let startScreenY = 0
-  let dragDirection = 'right'
-  let lastTurnX = 0
+  let clickTimes = []
+  let pendingClickTimer = null
+  let lastClickAt = 0
+
+  function pickInteractionSequence() {
+    // Dicek sebelum notifyInteraction() supaya masih menangkap keadaan
+    // sebelum wake() membangunkannya.
+    if (window.petBehavior.isAsleep()) {
+      clickTimes = []
+
+      return STARTLED_SEQUENCE
+    }
+
+    const now = Date.now()
+
+    clickTimes = clickTimes
+      .filter(time => now - time <= CLICK_STREAK_WINDOW_MS)
+      .concat(now)
+
+    if (clickTimes.length < CLICKS_TO_SULK) {
+      return TICKLE_SEQUENCE
+    }
+
+    // Ngambeknya sekali tampil lalu hitungannya direset, supaya klik
+    // berikutnya mulai dari geli lagi, bukan langsung ngambek terus.
+    clickTimes = []
+
+    return SULKY_CLICK_SEQUENCE
+  }
 
   function playInteraction() {
-    showBubble(pickLine(TICKLE_SEQUENCE[0]))
+    const sequence = pickInteractionSequence()
 
+    // notifyInteraction() dulu: kalau lagi tidur, wake() di dalamnya
+    // memanggil hideBubble() — bubble reaksi ini harus tampil SESUDAH itu,
+    // supaya tidak langsung ketutup lagi.
     window.petBehavior.notifyInteraction()
     window.petBehavior.pause()
 
+    showBubble(pickLine(sequence[0]))
+
     // Dijalankan berurutan, behavior baru lanjut setelah rangkaian selesai
     function playFrom(index) {
-      if (index >= TICKLE_SEQUENCE.length) {
+      if (index >= sequence.length) {
         playAnimation('idle')
         window.petBehavior.resume(1200)
 
         return
       }
 
-      playAnimation(TICKLE_SEQUENCE[index], {
+      playAnimation(sequence[index], {
         onEnd: () => playFrom(index + 1),
       })
     }
@@ -47,28 +94,50 @@
     playFrom(0)
   }
 
-  // Frame diangkat ada dua arah, dipilih dari arah tarikan kursor
-  function setDragDirection(direction) {
-    if (direction === dragDirection) {
+  // Klik & dobel klik dipakai berdua di elemen yang sama untuk dua hal
+  // berbeda (reaksi digelitik/ngambek vs buka chat) -- tanpa penundaan ini,
+  // tiap klik dalam dobel klik langsung memicu reaksinya sendiri duluan,
+  // baru menyusul jendela chat kebuka, jadi tabrakan.
+  function handleClick() {
+    const now = Date.now()
+
+    if (now - lastClickAt <= DOUBLE_CLICK_WINDOW_MS) {
+      clearTimeout(pendingClickTimer)
+      pendingClickTimer = null
+      lastClickAt = 0
+
+      window.petAPI.openChat()
+
       return
     }
 
-    dragDirection = direction
+    lastClickAt = now
 
-    setFacing(direction)
-    playAnimation(direction === 'left' ? 'dragLeft' : 'dragRight')
+    pendingClickTimer = setTimeout(() => {
+      pendingClickTimer = null
+      lastClickAt = 0
+
+      playInteraction()
+    }, DOUBLE_CLICK_WINDOW_MS)
   }
 
-  function beginDrag(event) {
+  // Ditekan dulu (mousedown) belum tentu jadi seret -- animasi & pose
+  // "diangkat" baru benar-benar main begitu kursor terbukti lewat
+  // CLICK_THRESHOLD (lihat mousemove), supaya klik biasa tidak sempat
+  // kelihatan pose itu sekilas sebelum reaksi klik/sulky-nya sendiri main.
+  function beginPress(event) {
     dragging = true
+    dragStarted = false
 
     // Posisi kursor relatif jendela; selama drag nilainya tetap
     grabX = event.clientX
     grabY = event.clientY
     startScreenX = event.screenX
     startScreenY = event.screenY
-    dragDirection = 'right'
-    lastTurnX = event.screenX
+  }
+
+  function startDragging() {
+    dragStarted = true
 
     window.petPassthrough.setForced(true)
     window.petBehavior.pause()
@@ -76,30 +145,29 @@
     petElement.classList.remove('is-dropping')
     petElement.classList.add('is-dragging')
 
+    // Posenya sekarang satu sheet saja (menghadap depan, tidak dibedakan
+    // arah), jadi tidak perlu ganti animasi lagi selama diseret.
     setFacing('right')
-    playAnimation('dragRight')
+    playAnimation('drag', { onEnd: () => playAnimation('dragHeld') })
     showBubble(pickLine('drag'))
   }
 
-  function endDrag(event) {
+  function endDrag() {
     dragging = false
-
-    window.petPassthrough.setForced(false)
-    petElement.classList.remove('is-dragging')
 
     // Pindah jendela berkali-kali bisa membuat Windows menurunkan z-order
     window.petAPI.raise()
 
-    const distance = Math.hypot(
-      event.screenX - startScreenX,
-      event.screenY - startScreenY,
-    )
-
-    if (distance < CLICK_THRESHOLD) {
+    if (!dragStarted) {
+      // Tidak pernah lewat CLICK_THRESHOLD -- klik murni, animasi seret
+      // tidak pernah sempat main sama sekali.
       setFacing('right')
-      playInteraction()
+      handleClick()
       return
     }
+
+    window.petPassthrough.setForced(false)
+    petElement.classList.remove('is-dragging')
 
     setFacing('right')
 
@@ -128,7 +196,7 @@
 
     event.preventDefault()
     window.petAPI.raise()
-    beginDrag(event)
+    beginPress(event)
   })
 
   window.addEventListener('mousemove', event => {
@@ -136,26 +204,29 @@
       return
     }
 
+    if (!dragStarted) {
+      const distance = Math.hypot(
+        event.screenX - startScreenX,
+        event.screenY - startScreenY,
+      )
+
+      if (distance >= CLICK_THRESHOLD) {
+        startDragging()
+      }
+    }
+
     window.petAPI.setPosition(
       event.screenX - grabX,
       event.screenY - grabY,
     )
-
-    const shift = event.screenX - lastTurnX
-
-    if (Math.abs(shift) >= DRAG_TURN_THRESHOLD) {
-      lastTurnX = event.screenX
-
-      setDragDirection(shift < 0 ? 'left' : 'right')
-    }
   })
 
-  window.addEventListener('mouseup', event => {
+  window.addEventListener('mouseup', () => {
     if (!dragging) {
       return
     }
 
-    endDrag(event)
+    endDrag()
   })
 
   // Kursor keluar layar / jendela kehilangan fokus saat drag
@@ -166,18 +237,17 @@
 
     dragging = false
 
-    window.petPassthrough.setForced(false)
-    petElement.classList.remove('is-dragging')
+    if (dragStarted) {
+      window.petPassthrough.setForced(false)
+      petElement.classList.remove('is-dragging')
+      playAnimation('idle')
+      window.petBehavior.resume(600)
+    }
+
+    dragStarted = false
 
     window.petAPI.raise()
-
     setFacing('right')
-    playAnimation('idle')
-    window.petBehavior.resume(600)
-  })
-
-  petElement.addEventListener('dblclick', () => {
-    window.petAPI.openChat()
   })
 
   window.addEventListener('contextmenu', event => {

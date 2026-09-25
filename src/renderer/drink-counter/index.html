@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; img-src 'self' data:;"
+    />
+    <link rel="stylesheet" href="../shared/glass.css" />
+    <link rel="stylesheet" href="./style.css" />
+    <title>Catatan minum</title>
+  </head>
+
+  <body>
+    <div class="glass badge" role="group" aria-label="Minum hari ini">
+      <span class="bottle" aria-hidden="true">
+        <span class="bottle__cap"></span>
+        <span class="bottle__neck"></span>
+        <span class="bottle__body">
+          <span class="bottle__water"></span>
+        </span>
+      </span>
+
+      <span class="badge__text">
+        <strong id="drink-count" aria-live="polite">0</strong>
+        <span>hari ini</span>
+      </span>
+
+      <span class="badge__actions">
+        <button id="drink-minus" type="button" aria-label="Kurangi satu minum" title="Kurangi satu minum">−</button>
+        <button id="drink-plus" type="button" aria-label="Catat satu minum" title="Catat satu minum">+</button>
+      </span>
+    </div>
+
+    <script src="./drink-counter.js"></script>
+  </body>
+</html>

@@ -13,8 +13,11 @@
     window.petBehavior.notifyInteraction()
     window.petBehavior.pause()
 
-    const emotion = payload.emotion && window.petAnim.animations[payload.emotion]
-      ? payload.emotion
+    const requestedEmotion = payload.emotion === 'lookAround'
+      ? 'reactions'
+      : payload.emotion
+    const emotion = requestedEmotion && window.petAnim.animations[requestedEmotion]
+      ? requestedEmotion
       : 'idle'
 
     showBubble(payload.text)
@@ -31,8 +34,8 @@
 
   function handleThinking(isThinking) {
     if (isThinking) {
-      // behavior yang pegang animasinya: ikut kerja di laptop dulu, lalu
-      // celingukan dan menunggu kalau promptnya lama.
+      // behavior yang pegang animasinya: ikut kerja di laptop selama
+      // prompt diproses, termasuk kalau prosesnya lama.
       window.petBehavior.setChatBusy(true)
 
       showBubble(pickLine('thinking'), { sticky: true, thinking: true })
@@ -85,8 +88,17 @@
         window.petBehavior.wake({ force: true })
         break
 
+      case 'device-active':
+        window.petBehavior.greetAfterDeviceActive()
+        break
+
       case 'random':
         window.petBehavior.playRandom()
+        break
+
+      // Dari menu klik-kanan, buat uji manual tanpa menunggu semalaman
+      case 'sulk':
+        window.petBehavior.sulk(payload.likes ?? 0)
         break
 
       // Dari jendela penguji: behavior dihentikan dulu supaya aktivitas acak
@@ -124,7 +136,7 @@
     try {
       const startModes = await window.petAPI.getModes()
 
-      window.petBehavior.applyModes(startModes)
+      window.petBehavior.setInitialModes(startModes)
     }
     catch (error) {
       console.warn('Gagal membaca mode:', error)
@@ -141,7 +153,44 @@
       window.petBehavior.applyModes(next)
     })
 
-    window.petBehavior.start()
+    window.petAPI.onDrinkReminder(() => {
+      if (window.petBehavior.remindWater()) {
+        window.petAPI.ackDrinkReminder().catch(error => {
+          console.warn('Gagal mencatat pengingat minum:', error)
+        })
+      }
+    })
+
+    window.petAPI.onScrollState(({ active }) => {
+      window.petBehavior.setScrollActive(active)
+    })
+
+    // Dicek berkala juga dari main process (lihat pet:affection-penalty) buat
+    // jaga-jaga kalau app dibiarkan menyala lewat tengah malam tanpa restart.
+    window.petAPI.onAffectionPenalty(result => {
+      if (result?.penalized) {
+        window.petBehavior.sulk(result.likes)
+      }
+    })
+
+    let pendingSulkLikes = null
+
+    try {
+      const affection = await window.petAPI.checkAffection()
+
+      if (affection?.penalized) {
+        pendingSulkLikes = affection.likes
+      }
+    }
+    catch (error) {
+      console.warn('Gagal memeriksa status like:', error)
+    }
+
+    window.petBehavior.start({
+      afterWave: pendingSulkLikes === null
+        ? null
+        : () => window.petBehavior.sulk(pendingSulkLikes),
+    })
   }
 
   bootstrap()

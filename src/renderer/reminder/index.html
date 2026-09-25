@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'" />
+    <link rel="stylesheet" href="../shared/glass.css" />
+    <link rel="stylesheet" href="./style.css" />
+    <title>Pengingat baru</title>
+  </head>
+
+  <body>
+    <main class="glass panel" aria-label="Buat pengingat">
+      <header class="header">
+        <span class="header__icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <rect x="5" y="4" width="14" height="16" rx="3" />
+            <path d="M9 2.5v3M15 2.5v3M5 9h14m-10.5 5 2 2 4-4" />
+          </svg>
+        </span>
+        <h1>Pengingat baru</h1>
+        <button type="button" class="close" id="close" aria-label="Tutup panel">
+          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M5 5l10 10M15 5 5 15" /></svg>
+        </button>
+      </header>
+
+      <form id="form">
+        <label class="field">
+          <span>Judul pengingat</span>
+          <input id="title" type="text" placeholder="Mau diingatkan apa?" autocomplete="off" required />
+        </label>
+
+        <div class="row">
+          <label class="field">
+            <span>Tanggal <small>opsional</small></span>
+            <input id="date" type="date" />
+          </label>
+          <label class="field">
+            <span>Jam</span>
+            <input id="time" type="time" value="09:00" />
+          </label>
+        </div>
+
+        <label class="field">
+          <span>Daftar</span>
+          <select id="list"><option value="">Default</option></select>
+        </label>
+
+        <label class="field">
+          <span>Catatan <small>opsional</small></span>
+          <textarea id="notes" rows="2" placeholder="Tambahkan catatan kecil..."></textarea>
+        </label>
+
+        <button type="submit" class="submit" id="submit">Simpan pengingat</button>
+        <p class="status" id="status" role="status" aria-live="polite" hidden></p>
+      </form>
+
+      <div class="mascot-note" id="note" aria-hidden="true">
+        <svg class="mascot-note__sparkle" viewBox="0 0 20 20" aria-hidden="true">
+          <path d="M10 1.5 11.8 8.2 18.5 10l-6.7 1.8L10 18.5l-1.8-6.7L1.5 10l6.7-1.8L10 1.5Z" />
+        </svg>
+        <span>Jinshi siap mengingatkan</span>
+        <span class="mascot-note__sticker"><img src="../pet/assets/frames/idle-blink/02.png" alt="" /></span>
+      </div>
+    </main>
+
+    <script src="./reminder.js"></script>
+  </body>
+</html>

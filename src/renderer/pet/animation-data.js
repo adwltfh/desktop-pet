@@ -31,6 +31,24 @@
     return { frames, holds }
   }
 
+  // Seperti `createSequence`, tapi tiap langkah boleh ambil dari folder
+  // berbeda — dipakai transisi yang menyambung beberapa sheet sekaligus
+  // (mis. drowsy -> sleep, atau sleep -> drowsy -> idle waktu bangun).
+  function createMixedSequence(steps) {
+    const frames = []
+    const holds = {}
+
+    steps.forEach(([folder, number, duration], index) => {
+      frames.push(
+        `./assets/frames/${folder}/${String(number).padStart(2, '0')}.png`,
+      )
+
+      holds[index] = duration
+    })
+
+    return { frames, holds }
+  }
+
   // Satu putaran baca: tiga kali baca lalu membalik halaman, dan baru di
   // akhir dia menemukan sesuatu yang menarik. Jadi frame membalik halaman
   // muncul tiga kali lebih sering daripada frame berbinar.
@@ -58,6 +76,18 @@
   const GAZE_DOWN_ANGLE = 90
   const GAZE_STEP = 360 / GAZE_FRAMES.length
 
+  // Tiap variasi mengantuk berangkat dan kembali ke frame 01 (jangkar) —
+  // biar gonta-ganti antar variasi tidak pernah "meloncat" pose.
+  const DROWSY_BLINK_STEPS = [[1, 520], [2, 180], [1, 260], [2, 220], [1, 650]]
+  const DROWSY_YAWN_STEPS = [[1, 380], [2, 180], [3, 680], [3, 420], [4, 520], [1, 700]]
+  const DROWSY_MICRO_DOZE_STEPS = [[1, 420], [2, 260], [5, 820], [5, 720], [6, 380], [1, 620]]
+
+  // Satu putaran penuh selebrasi besar: bersiap, tangan terangkat, melompat,
+  // puncak confetti, mendarat, tepuk tangan bahagia.
+  const CELEBRATE_BIG_STEPS = [
+    [1, 180], [2, 120], [3, 100], [4, 200], [5, 140], [6, 220],
+  ]
+
   // `holds` menahan frame tertentu lebih lama dari `speed`. Kuncinya indeks
   // frame (mulai 0), nilainya durasi dalam ms.
   const animations = {
@@ -69,8 +99,18 @@
 
     walk: {
       frames: createFrames('walk-right', 8),
-      speed: 110,
+      speed: 105,
       loop: true,
+    },
+
+    // Dua langkah melompat ringan, dengan puff saat mendarat dan kilau
+    // reaksi di lompatan kedua. Diputar sekali di sela jalan biasa.
+    skipping: {
+      ...createSequence('skipping', [
+        [1, 105], [2, 95], [3, 125], [4, 105],
+        [5, 105], [6, 95], [7, 135], [8, 110],
+      ]),
+      loop: false,
     },
 
     run: {
@@ -79,51 +119,97 @@
       loop: true,
     },
 
-    // Baris sprite "sleep" berisi dua gerakan: 01-02 duduk mengantuk,
-    // 03-04 telungkup tidur. Mengantuk diulang dulu beberapa detik, baru
-    // turun ke posisi tidur yang diam di frame terakhir.
+    // Reaksi ekspresi tunggal ("kelihatan mengantuk") yang dipilih model
+    // chat lewat [emotion:sleepy]. Tidur panjang hanya dimulai lewat menu.
     sleepy: {
-      frames: createFrames('sleep', [1, 2]),
-      speed: 520,
-      loop: true,
-    },
-
-    sleep: {
-      frames: createFrames('sleep', [3, 4]),
-      speed: 900,
+      ...createSequence('drowsy', DROWSY_BLINK_STEPS),
       loop: false,
     },
 
-    // Bangun = seluruh urutan tidur dibalik: telungkup lalu bangkit duduk.
-    // Kalau cuma frame duduk yang dibalik, hasilnya sama saja dengan
-    // `sleepy` — 01 dan 02 itu dua frame napas, bukan gerakan bangkit.
+    // Variasi mengantuk tersedia untuk uji manual; bosan tidak lagi
+    // memutar rangkaian mengantuk atau membuat pet tidur otomatis.
+    drowsyBlink: {
+      ...createSequence('drowsy', DROWSY_BLINK_STEPS),
+      loop: false,
+    },
+
+    drowsyYawn: {
+      ...createSequence('drowsy', DROWSY_YAWN_STEPS),
+      loop: false,
+    },
+
+    drowsyMicroDoze: {
+      ...createSequence('drowsy', DROWSY_MICRO_DOZE_STEPS),
+      loop: false,
+    },
+
+    // Jangkar (01), kedip berat (02), menguap (03) dari sheet drowsy, lalu
+    // menyambung penuh ke seluruh sheet sleep (01-04: menguap duduk, usap
+    // mata, melipat badan, sampai telungkup tidur). Behavior.js memutar ini
+    // sekali sebagai transisi terakhir sebelum `sleepBreathing` mengambil
+    // alih di frame terakhirnya.
+    drowsyToSleep: {
+      ...createMixedSequence([
+        ['drowsy', 1, 360],
+        ['drowsy', 2, 220],
+        ['drowsy', 3, 720],
+        ['sleep', 1, 620],
+        ['sleep', 2, 520],
+        ['sleep', 3, 720],
+        ['sleep', 4, 1250],
+      ]),
+      loop: false,
+    },
+
+    // Napas selagi tidur: bergantian antara pose melipat badan (03) dan
+    // telungkup penuh (04), bukan cuma diam di satu frame — itu yang
+    // menciptakan efek naik-turunnya dada.
+    sleepBreathing: {
+      ...createSequence('sleep', [[3, 950], [4, 1150], [3, 900], [4, 1250]]),
+      loop: true,
+    },
+
+    // Bangun: dibalik dari telungkup (04) ke usap mata (02), lewat kilau
+    // pulih dari sheet drowsy (06), baru ke idle. Dipakai hanya kalau pet
+    // sudah lewat tahap `sleepBreathing`; kalau baru sebatas mengantuk,
+    // behavior.js melewati ini.
     wakeUp: {
-      frames: createFrames('sleep', [1, 4]).reverse(),
-      speed: 320,
+      ...createMixedSequence([
+        ['sleep', 4, 620],
+        ['sleep', 3, 420],
+        ['sleep', 2, 460],
+        ['drowsy', 6, 420],
+        ['idle-blink', 2, 260],
+        ['idle-blink', 1, 520],
+      ]),
       loop: false,
     },
 
-    // Bekas animasi "greeting" disambung ke depan celebrate: dipakai waktu
-    // pet dan pengguna berhasil menyelesaikan sesuatu di chat, bukan menyapa.
+    // Respons ringan: dipakai default waktu tugas/masalah pengguna selesai
+    // biasa saja — bukan momen besar. Senyum kecil, angkat tangan lembut,
+    // tepuk tangan kecil, lalu tenang lagi sebelum balik ke idle.
     celebrate: {
-      frames: [
-        ...createFrames('greeting', 5),
-        ...createFrames('celebrate', 8),
-      ],
-      speed: 150,
+      ...createSequence('celebrate', [[1, 180], [2, 140], [6, 220], [1, 120]]),
       loop: false,
     },
 
-    // Tiga folder arah pandang digabung jadi satu putaran: tengah, kanan,
-    // lalu kiri. Dipakai waktu pet mencari pengguna yang sedang tidak ada.
+    // Selebrasi besar: cuma untuk momen personal yang benar-benar
+    // membahagiakan/membanggakan (ulang tahun, pencapaian besar) — bukan
+    // keberhasilan teknis rutin. Satu putaran penuh dari sheet yang sama,
+    // diulang dua kali sesuai urutan aslinya.
+    celebrateBig: {
+      ...createSequence('celebrate', [
+        ...CELEBRATE_BIG_STEPS,
+        ...CELEBRATE_BIG_STEPS,
+      ]),
+      loop: false,
+    },
+
+    // Berhenti sejenak di tepi desktop sebelum membalik arah jalan.
     lookAround: {
-      frames: [
-        ...createFrames('look-around', 6),
-        ...createFrames('look-directions-a', 8),
-        ...createFrames('look-directions-b', 8),
-      ],
+      frames: createFrames('look-around', 6),
       speed: 220,
-      loop: true,
+      loop: false,
     },
 
     // Diputar sendiri, pandangannya berkeliling. Waktu mengikuti kursor
@@ -146,31 +232,47 @@
       loop: false,
     },
 
-    // Sprite sheet ekspresi (assets/jinshi-expressive.png) menyediakan
-    // frame diangkat ke kanan/kiri, jadi tidak lagi memakai look-around.
-    // Frame kiri sudah digambar menghadap kiri, jangan dicerminkan lagi.
-    dragRight: {
-      frames: createFrames('drag-right', 8),
-      speed: 120,
-      loop: true,
-    },
-
-    dragLeft: {
-      frames: createFrames('drag-left', 8),
-      speed: 120,
-      loop: true,
-    },
-
+    // Diangkat: dua frame kaget (entri), lalu drag.js menyambung ke
+    // `dragHeld` yang diam dalam satu pose; ayunan pelannya dibuat di CSS.
+    // Satu sheet saja, tidak lagi dibedakan kiri/kanan — posenya menghadap depan.
     drag: {
-      frames: createFrames('drag-right', 8),
-      speed: 120,
+      ...createSequence('drag', [[1, 120], [2, 140]]),
+      loop: false,
+    },
+
+    dragHeld: {
+      frames: createFrames('drag', [3, 3]),
+      speed: 1200,
       loop: true,
     },
 
-    // Melayang lalu mendarat, dipakai saat pet dilepas setelah diseret
+    // Pose jalan sebagai awalan, satu tendangan ke kanan, lalu menapak lagi.
+    kickCounter: {
+      ...createMixedSequence([
+        ['walk-right', 1, 170],
+        ['kick-counter', 1, 220],
+        ['kick-counter', 1, 170],
+        ['walk-right', 1, 260],
+      ]),
+      loop: false,
+    },
+
+    // Dilepas setelah diseret: kaget jatuh, mendarat, sempoyongan, lega.
     drop: {
-      frames: createFrames('jump-fall', 4),
-      speed: 110,
+      ...createSequence('drop', [
+        [1, 100], [2, 100], [3, 90], [4, 160],
+        [5, 120], [6, 130], [7, 180], [8, 350],
+      ]),
+      loop: false,
+    },
+
+    // Sesekali muncul di tengah jalan biasa (bukan lari) — behavior.js yang
+    // menggulirkan peluangnya, lalu balik ke `walk` lewat `onEnd`.
+    walkCute: {
+      ...createSequence('walk-cute', [
+        [1, 115], [2, 105], [3, 110], [4, 105],
+        [5, 115], [6, 105], [7, 110], [8, 105],
+      ]),
       loop: false,
     },
 
@@ -205,6 +307,9 @@
       frames: createFrames('water-reminder', 6),
       speed: 340,
       loop: false,
+      // Frame 04 benar-benar meneguk air. Tahan agar gerak minumnya terbaca,
+      // tetapi satu putaran tetap selesai sebelum jeda minimum balasan chat.
+      holds: { 3: 1000 },
     },
 
     // Baris "patting" isinya satu putaran utuh: 01-02 tangan datang, 03
@@ -300,6 +405,20 @@
       loop: true,
     },
 
+    // Cemberut kecil: menyilangkan tangan, memalingkan wajah, lalu melirik
+    // kembali. Selesai satu putaran agar callback sulk kembali ke idle.
+    sulky: {
+      frames: createFrames('sulky', 6),
+      speed: 400,
+      loop: false,
+
+      holds: {
+        0: 650,
+        2: 550,
+        3: 650,
+      },
+    },
+
     // Frame 01 laptopnya masih tertutup, jadi tidak ikut putaran kerja —
     // kalau ikut, dia seperti buka-tutup laptop terus. Putaran kerja cuma
     // 02-06, dengan frame mengetik dan frame berpikir ditahan lebih lama
@@ -329,7 +448,7 @@
   // Animasi yang arah hadapnya sudah ada di framenya sendiri: ada yang
   // digambar menghadap kiri, ada yang framenya dipilih menurut arah kursor.
   // Kalau dicerminkan lewat CSS, arahnya jadi terbalik.
-  const unmirroredAnimations = new Set(['dragLeft', 'gaze'])
+  const unmirroredAnimations = new Set(['gaze'])
 
   window.petAnimData = {
     animations,

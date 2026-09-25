@@ -1,81 +1,72 @@
 const Anthropic = require('@anthropic-ai/sdk')
-const { getApiKey, readSettings } = require('./settings')
 
-// Ekspresi yang boleh dipilih model -> dipetakan ke nama animasi di renderer
-const EMOTIONS = [
-  'idle',
-  'celebrate',
-  'cuteGesture',
-  'hugPlushie',
-  'lookAround',
-  'waving',
-  'reactions',
-  'shocked',
-  'waterReminder',
-  'patting',
-  'reading',
-  'waiting',
-  'dancing',
-  'listeningMusic',
-  'usingLaptop',
-  // Pose duduk mengantuk, bukan 'sleep' yang telungkup dan looping terus
-  'sleepy',
-]
+const { getApiKey, readSettings } = require('./settings')
+const {
+  buildPersonaText,
+  parseReply,
+  tokensFromAnthropicUsage,
+} = require('./persona')
+const claudeCli = require('./claude-cli')
+
+// Total token & model asli-dipakai per provider sejak app ini dibuka --
+// dipakai buat indikator "model + pemakaian" di UI. Ini BUKAN sisa
+// limit/kuota (itu tidak tersedia lewat CLI/SDK untuk akun langganan), cuma
+// akumulasi lokal & reset tiap app di-restart. Model dicatat per panggilan
+// (bukan cuma dibaca dari Setting) karena mode 'claude' bisa menimpa model
+// per mode (lihat MODES di claude-cli.js -- roleplay pakai model lebih
+// ringan dari model utama pengguna).
+const usageByProvider = {}
+const lastModelByProvider = {}
+
+function addUsage(provider, tokens, model) {
+  if (tokens) {
+    usageByProvider[provider] = (usageByProvider[provider] ?? 0) + tokens
+  }
+
+  if (model) {
+    lastModelByProvider[provider] = model
+  }
+}
+
+function getUsage(providerOverride) {
+  const settings = readSettings()
+  const provider = providerOverride ?? settings.provider
+
+  return {
+    provider,
+    model: lastModelByProvider[provider] ?? settings.models[provider] ?? null,
+    totalTokens: usageByProvider[provider] ?? 0,
+  }
+}
 
 const MAX_HISTORY_TURNS = 20
 
-// Riwayat percakapan (stateless API, jadi kita simpan sendiri)
-let history = []
-
-function buildSystemPrompt() {
-  const settings = readSettings()
-
-  return [
-    `Kamu adalah "${settings.petName}", sebuah desktop pet yang hidup di layar pengguna.`,
-    settings.persona,
-    '',
-    'Aturan menjawab:',
-    '- Balas dalam bahasa yang dipakai pengguna.',
-    '- Singkat dan hangat: maksimal 3 kalimat, kecuali pengguna minta penjelasan panjang.',
-    '- Jangan pakai markdown heading atau bullet kecuali diminta.',
-    `- Akhiri SETIAP balasan dengan satu tag ekspresi: [emotion:X] dengan X salah satu dari ${EMOTIONS.join(', ')}.`,
-    '- Pilih ekspresi yang cocok dengan isi balasan (celebrate kalau masalah pengguna berhasil selesai atau pertanyaannya terjawab tuntas, hugPlushie kalau menenangkan atau mengingatkan tidur, lookAround kalau bingung, shocked kalau kaget, waving kalau menyapa atau berpamitan, waterReminder kalau mengingatkan minum, patting kalau memuji, reading kalau membahas bacaan atau belajar, waiting kalau menunggu jawaban pengguna, dancing kalau riang sekali, listeningMusic kalau membahas musik atau suasana santai, usingLaptop kalau membahas kerjaan atau ngoding, reactions untuk reaksi ringan lainnya).',
-  ].join('\n')
-}
-
-function parseReply(rawText) {
-  const text = (rawText ?? '').trim()
-  const match = text.match(/\[emotion:\s*([a-zA-Z]+)\s*\]/)
-
-  const emotion = match && EMOTIONS.includes(match[1])
-    ? match[1]
-    : 'idle'
-
-  const reply = text.replace(/\[emotion:\s*[a-zA-Z]+\s*\]/g, '').trim()
+// Riwayat provider berbasis API stateless (Claude API key & ChatGPT) disimpan
+// sendiri di memori di sini. Provider 'claude' (CLI lokal) beda: riwayat &
+// sesinya disimpan di folder pet lewat claude-cli.js, bukan di sini.
+function createHistoryStore() {
+  let history = []
 
   return {
-    reply: reply || '...',
-    emotion,
+    entries: () => history,
+
+    push(role, content) {
+      history.push({ role, content })
+
+      const maxMessages = MAX_HISTORY_TURNS * 2
+
+      if (history.length > maxMessages) {
+        history = history.slice(history.length - maxMessages)
+      }
+    },
+
+    clone: () => history.map(entry => ({ ...entry })),
+    clear: () => { history = [] },
   }
 }
 
-function pushHistory(role, content) {
-  history.push({ role, content })
-
-  const maxMessages = MAX_HISTORY_TURNS * 2
-
-  if (history.length > maxMessages) {
-    history = history.slice(history.length - maxMessages)
-  }
-}
-
-function clearHistory() {
-  history = []
-}
-
-function getHistory() {
-  return history.map(entry => ({ ...entry }))
-}
+const chatGptStore = createHistoryStore()
+const claudeApiStore = createHistoryStore()
 
 function isBetaUnsupported(error) {
   const message = String(error?.message ?? '').toLowerCase()
@@ -86,8 +77,8 @@ function isBetaUnsupported(error) {
   )
 }
 
-async function askClaude(userMessage) {
-  const apiKey = getApiKey('claude')
+async function askClaudeApi(userMessage) {
+  const apiKey = getApiKey('claude-api')
 
   if (!apiKey) {
     throw new Error('API key Claude belum diisi. Buka jendela chat > Setting.')
@@ -97,11 +88,11 @@ async function askClaude(userMessage) {
   const client = new Anthropic({ apiKey })
 
   const request = {
-    model: settings.models.claude,
+    model: settings.models['claude-api'],
     max_tokens: 600,
-    system: buildSystemPrompt(),
+    system: buildPersonaText(),
     output_config: { effort: 'low' },
-    messages: [...history, { role: 'user', content: userMessage }],
+    messages: [...claudeApiStore.entries(), { role: 'user', content: userMessage }],
   }
 
   let response
@@ -135,7 +126,12 @@ async function askClaude(userMessage) {
     .map(block => block.text)
     .join('\n')
 
-  return parseReply(text)
+  const result = parseReply(text)
+
+  result.model = settings.models['claude-api']
+  result.usageTokens = tokensFromAnthropicUsage(response.usage)
+
+  return result
 }
 
 async function askChatGPT(userMessage) {
@@ -162,8 +158,8 @@ async function askChatGPT(userMessage) {
         max_tokens: 600,
 
         messages: [
-          { role: 'system', content: buildSystemPrompt() },
-          ...history,
+          { role: 'system', content: buildPersonaText() },
+          ...chatGptStore.entries(),
           { role: 'user', content: userMessage },
         ],
       }),
@@ -179,31 +175,94 @@ async function askChatGPT(userMessage) {
   const payload = await response.json()
   const text = payload.choices?.[0]?.message?.content ?? ''
 
-  return parseReply(text)
-}
+  const result = parseReply(text)
 
-async function ask(userMessage) {
-  const message = (userMessage ?? '').trim()
-
-  if (!message) {
-    throw new Error('Pesan kosong.')
-  }
-
-  const provider = readSettings().provider
-
-  const result = provider === 'chatgpt'
-    ? await askChatGPT(message)
-    : await askClaude(message)
-
-  pushHistory('user', message)
-  pushHistory('assistant', result.reply)
+  result.model = settings.models.chatgpt
+  result.usageTokens = payload.usage?.total_tokens ?? 0
 
   return result
 }
 
+async function ask(userMessage, forcedMode, attachmentPath) {
+  const message = (userMessage ?? '').trim()
+
+  if (!message && !attachmentPath) {
+    throw new Error('Pesan kosong.')
+  }
+
+  const provider = readSettings().provider
+  let result
+
+  if (provider === 'claude-api' || provider === 'chatgpt') {
+    // Lampiran cuma didukung lewat CLI (pakai tool Read), bukan API mentah --
+    // daripada diam-diam diabaikan, mending ditolak jelas.
+    if (attachmentPath) {
+      throw new Error(
+        'Lampiran berkas cuma didukung di provider Claude (CLI lokal) untuk sekarang.',
+      )
+    }
+
+    if (provider === 'claude-api') {
+      result = await askClaudeApi(message)
+
+      claudeApiStore.push('user', message)
+      claudeApiStore.push('assistant', result.reply)
+    }
+    else {
+      result = await askChatGPT(message)
+
+      chatGptStore.push('user', message)
+      chatGptStore.push('assistant', result.reply)
+    }
+  }
+  else {
+    // Provider 'claude' jalan lewat CLI lokal (src/main/claude-cli.js), yang
+    // menyimpan riwayat & sesi sendiri di folder pet. forcedMode dari UI
+    // (roleplay/working/searching) dilewatkan; kalau kosong/'auto', CLI yang
+    // mengklasifikasi mode-nya sendiri.
+    result = await claudeCli.ask(message, forcedMode, attachmentPath)
+  }
+
+  const { usageTokens, model, ...publicResult } = result
+
+  addUsage(provider, usageTokens, model)
+
+  return { ...publicResult, usage: getUsage(provider) }
+}
+
+function getHistory() {
+  const provider = readSettings().provider
+
+  if (provider === 'claude-api') {
+    return claudeApiStore.clone()
+  }
+
+  if (provider === 'chatgpt') {
+    return chatGptStore.clone()
+  }
+
+  return claudeCli.getHistory()
+}
+
+function clearHistory() {
+  const provider = readSettings().provider
+
+  if (provider === 'claude-api') {
+    claudeApiStore.clear()
+    return
+  }
+
+  if (provider === 'chatgpt') {
+    chatGptStore.clear()
+    return
+  }
+
+  claudeCli.clearHistory()
+}
+
 module.exports = {
-  EMOTIONS,
   ask,
   clearHistory,
   getHistory,
+  getUsage,
 }

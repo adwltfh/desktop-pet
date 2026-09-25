@@ -1,0 +1,13 @@
+{
+  "image": "jinshi-music-v2.png",
+  "layout": "packed",
+  "columns": 6,
+  "cellWidth": 362,
+  "cellHeight": 724,
+  "frameCrop": { "top": 160, "height": 465 },
+  "scaledSprite": { "width": 106, "height": 136, "topPadding": 5 },
+  "frameSize": { "width": 151, "height": 149 },
+  "animations": {
+    "listeningMusic": { "frames": 6, "folder": "listening-music" }
+  }
+}

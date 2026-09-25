@@ -28,6 +28,7 @@ body {
 /* ---------- Pet ---------- */
 
 .pet {
+  position: relative;
   width: 160px;
   height: 160px;
 
@@ -38,6 +39,26 @@ body {
   transform-origin: 50% 90%;
 }
 
+/* Cermin kiri/kanan ditaruh di sini (bukan di img, lihat di bawah) lewat
+   properti `scale` yang berdiri sendiri -- sengaja TANPA transition, supaya
+   baliknya arah tetap instan/tegas, bukan lewat animasi "kempes lalu
+   kebalik" yang aneh kalau ikut ditransisikan. */
+.pet.is-facing-left {
+  scale: -1 1;
+}
+
+/* Kanvas frame jalan lebih tinggi dan ramping daripada lookAround.
+   Tambahan kecil ini menyamakan ukuran Jinshi yang tampak di layar. */
+.pet[data-animation='walk'],
+.pet[data-animation='walkCute'] {
+  --activity-scale: 1.04;
+}
+
+.pet[data-animation='skipping'] {
+  /* Sheet baru sedikit lebih kecil; samakan tinggi Jinshi dengan walk. */
+  --activity-scale: 1.12;
+}
+
 .pet img {
   width: 160px;
   height: 160px;
@@ -46,61 +67,122 @@ body {
 
   -webkit-user-drag: none;
 
-  /* Sebagian frame dimiringkan lewat --pet-tilt, dipasang per frame oleh
-     animation.js. Porosnya di kaki supaya badannya condong, bukan
-     melayang miring. */
-  transform: rotate(var(--pet-tilt, 0deg));
+  /* `scale`/`rotate` dipakai berdiri sendiri (bukan lewat `transform`
+     gabungan) justru supaya masing-masing bisa diatur transition-nya
+     sendiri-sendiri: ukuran (pet-scale/activity-scale) boleh melembut,
+     tapi --pet-tilt TIDAK ditransisikan karena dipasang bersamaan dengan
+     gantian frame oleh animation.js -- kalau ikut melembut, sudutnya jadi
+     telat menyusul gambar framenya sendiri. Ditaruh di img (bukan di .pet)
+     supaya tidak bentrok sama animasi ayun/mendarat yang juga pakai
+     `transform` di .pet saat drag/drop. */
+  scale: calc(var(--pet-scale, 1) * var(--activity-scale, 1));
+  rotate: var(--pet-tilt, 0deg);
   transform-origin: 50% 94%;
+
+  transition: scale 160ms ease-out;
 }
 
-.pet.is-facing-left img {
-  transform: scaleX(-1) rotate(var(--pet-tilt, 0deg));
-}
-
-/* Diangkat: badan sedikit terangkat dan bergoyang */
+/* Diangkat: satu pose menggantung dan berayun pelan ke kiri-kanan. */
 .pet.is-dragging {
   cursor: grabbing;
-  animation: pet-swing 620ms ease-in-out infinite;
+  transform-origin: 50% 18%;
+  animation: pet-swing 1600ms ease-in-out infinite;
 }
 
-/* Dijatuhkan: mendarat, gepeng sebentar, lalu memantul */
+/* Terlepas: mendarat kikuk, memantul kecil, lalu kembali tegak. */
 .pet.is-dropping {
-  animation: pet-land 520ms cubic-bezier(0.22, 1.2, 0.36, 1) 1;
+  animation: pet-land 1230ms linear 1;
+}
+
+/* Dua kepulan kecil muncul saat benturan (35% dari animasi jatuh). */
+.pet.is-dropping::before,
+.pet.is-dropping::after {
+  content: '';
+  position: absolute;
+  bottom: 8px;
+  left: calc(50% - 22px);
+  width: 44px;
+  height: 25px;
+  pointer-events: none;
+
+  background:
+    radial-gradient(circle at 20% 66%, rgb(239 234 244 / 88%) 0 23%, transparent 46%),
+    radial-gradient(circle at 51% 30%, rgb(248 245 250 / 90%) 0 24%, transparent 49%),
+    radial-gradient(circle at 80% 68%, rgb(230 223 236 / 82%) 0 22%, transparent 46%);
+  filter: drop-shadow(0 1px 1px rgb(58 45 68 / 22%));
+  animation: pet-landing-smoke 700ms ease-out 420ms both;
+}
+
+.pet.is-dropping::before {
+  --smoke-near: -14px;
+  --smoke-far: -48px;
+}
+
+.pet.is-dropping::after {
+  --smoke-near: 14px;
+  --smoke-far: 48px;
 }
 
 @keyframes pet-swing {
-  0% {
-    transform: translateY(-6px) rotate(-7deg);
-  }
-
-  50% {
-    transform: translateY(-10px) rotate(7deg);
-  }
-
+  0%,
+  50%,
   100% {
-    transform: translateY(-6px) rotate(-7deg);
+    transform: rotate(0deg);
+  }
+
+  25% {
+    transform: rotate(5deg);
+  }
+
+  75% {
+    transform: rotate(-5deg);
   }
 }
 
 @keyframes pet-land {
   0% {
-    transform: translateY(-14px) scale(0.94, 1.08);
+    transform: translateY(-22px) rotate(-3deg);
+  }
+
+  20% {
+    transform: translateY(-12px) rotate(4deg);
   }
 
   35% {
-    transform: translateY(0) scale(1.18, 0.82);
+    transform: translateY(0) rotate(-9deg) scale(1.09, 0.9);
   }
 
-  60% {
-    transform: translateY(-8px) scale(0.95, 1.05);
+  48% {
+    transform: translateY(-6px) rotate(5deg) scale(0.98, 1.03);
+  }
+
+  62% {
+    transform: translateY(0) rotate(-3deg) scale(1.02, 0.98);
   }
 
   80% {
-    transform: translateY(0) scale(1.06, 0.94);
+    transform: translateY(-2px) rotate(1deg);
   }
 
   100% {
     transform: translateY(0) scale(1, 1);
+  }
+}
+
+@keyframes pet-landing-smoke {
+  0% {
+    opacity: 0;
+    transform: translateY(2px) scale(0.45);
+  }
+
+  18% {
+    opacity: 0.8;
+    transform: translateX(var(--smoke-near)) translateY(-2px) scale(0.9);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateX(var(--smoke-far)) translateY(-19px) scale(1.35);
   }
 }
 

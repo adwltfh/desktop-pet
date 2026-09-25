@@ -1,0 +1,141 @@
+/* Form kecil dipakai bersama tiga panel aksi cepat (search-app,
+   calendar-event, reminder) -- dipicu dari menu bar, ditutup sendiri
+   setelah aksinya selesai. */
+:root {
+  color-scheme: dark;
+  --qa-mint: #9df0a8;
+  --qa-navy: #254b68;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+.qa-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: calc(100% - 6px);
+  margin: 3px;
+  padding: 12px 14px;
+  border-radius: 16px;
+}
+
+.qa-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.qa-panel__title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .1em;
+}
+
+.qa-close {
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .12);
+  color: #fff7f1;
+  cursor: pointer;
+  font: 600 12px/1 'Segoe UI', system-ui, sans-serif;
+}
+
+.qa-close:hover { background: rgba(255, 255, 255, .24); }
+
+#form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.qa-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  font-size: 11px;
+}
+
+.qa-field span { opacity: .8; letter-spacing: .02em; }
+
+.qa-field input,
+.qa-field select,
+.qa-field textarea {
+  padding: 6px 8px;
+  border: 1px solid rgba(255, 255, 255, .25);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, .22);
+  color: #fff7f1;
+  font: 500 12px/1.3 'Segoe UI', system-ui, sans-serif;
+}
+
+.qa-field textarea { resize: none; }
+
+.qa-field input:focus,
+.qa-field select:focus,
+.qa-field textarea:focus {
+  outline: 2px solid var(--qa-mint);
+  outline-offset: 1px;
+}
+
+.qa-row { display: flex; gap: 6px; }
+
+.qa-submit {
+  margin-top: 2px;
+  height: 30px;
+  border: 1px solid rgba(56, 91, 112, .6);
+  border-radius: 9px;
+  background: var(--qa-navy);
+  color: var(--qa-mint);
+  cursor: pointer;
+  font: 650 12px/1 'Segoe UI', system-ui, sans-serif;
+}
+
+.qa-submit:hover:not(:disabled) { background: #1e405a; }
+.qa-submit:disabled { cursor: default; opacity: .5; }
+
+.qa-status {
+  margin: 0;
+  min-height: 14px;
+  font-size: 11px;
+  opacity: .9;
+}
+
+.qa-status[data-tone='error'] { color: #ffb4b4; }
+.qa-status[data-tone='success'] { color: var(--qa-mint); }
+
+.qa-matches {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 88px;
+  overflow-y: auto;
+}
+
+.qa-matches button {
+  padding: 5px 8px;
+  border: 1px solid rgba(255, 255, 255, .2);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, .08);
+  color: #fff7f1;
+  text-align: left;
+  cursor: pointer;
+  font: 500 11px/1 'Segoe UI', system-ui, sans-serif;
+}
+
+.qa-matches button:hover { background: rgba(255, 255, 255, .18); }
+
+@media (prefers-reduced-transparency: reduce) {
+  .qa-panel { background: #252231; }
+}

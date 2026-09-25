@@ -1,0 +1,170 @@
+:root {
+  color-scheme: dark;
+  --jade: #8ed2b3;
+  --ivory: #fff7f1;
+  --gold: #eed0a1;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: transparent;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  padding: 10px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.illustration {
+  position: relative;
+  width: 134px;
+  height: 134px;
+  flex: none;
+}
+
+.dial {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  cursor: grab;
+  touch-action: none;
+}
+
+.dial:active { cursor: grabbing; }
+.dial:focus-visible { outline: 2px solid var(--jade); outline-offset: 2px; border-radius: 50%; }
+
+.ring-track {
+  fill: none;
+  stroke: rgba(50, 38, 65, .94);
+  stroke-width: 4;
+  filter: drop-shadow(0 0 2px rgba(255, 247, 241, .86)) drop-shadow(0 1px 2px rgba(16, 11, 30, .7));
+}
+
+.ring-progress {
+  fill: none;
+  stroke: var(--jade);
+  stroke-width: 7;
+  stroke-linecap: round;
+  stroke-dasharray: 0 100;
+  transform: rotate(-90deg);
+  transform-origin: 80px 80px;
+  filter: drop-shadow(0 1px 3px rgba(16, 11, 30, .45));
+}
+
+.ring-dot {
+  fill: var(--jade);
+  stroke: rgba(255, 247, 241, .7);
+  stroke-width: 1;
+  filter: drop-shadow(0 1px 3px rgba(16, 11, 30, .55));
+}
+
+.pet {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  filter: drop-shadow(0 0 4px rgba(255, 247, 241, .68)) drop-shadow(0 2px 3px rgba(16, 11, 30, .65));
+}
+
+body.running .pet { animation: pet-bob 2.2s ease-in-out infinite; }
+
+@keyframes pet-bob {
+  0%, 100% { transform: translate(-50%, -50%) rotate(-2deg); }
+  50% { transform: translate(-50%, calc(-50% - 4px)) rotate(2deg); }
+}
+
+.time {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  height: 58px;
+  padding: 7px 11px;
+  border-radius: 14px;
+}
+
+.segment-digit {
+  position: relative;
+  width: 26px;
+  height: 44px;
+}
+
+.segment {
+  position: absolute;
+  display: block;
+  border-radius: 6px;
+  background: rgba(238, 208, 161, .18);
+}
+
+.segment.lit, .colon-dot {
+  background: linear-gradient(165deg, var(--ivory), var(--gold));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .8), 0 0 5px rgba(238, 208, 161, .5);
+}
+
+.seg-a, .seg-g, .seg-d { left: 5px; width: 16px; height: 5px; }
+.seg-a { top: 0; }
+.seg-g { top: 19px; }
+.seg-d { bottom: 0; }
+.seg-f, .seg-b, .seg-e, .seg-c { width: 5px; height: 16px; }
+.seg-f, .seg-e { left: 0; }
+.seg-b, .seg-c { right: 0; }
+.seg-f, .seg-b { top: 3px; }
+.seg-e, .seg-c { bottom: 3px; }
+
+.colon {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  align-self: stretch;
+  width: 6px;
+}
+
+.colon-dot { width: 5px; height: 5px; border-radius: 50%; }
+
+.actions {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  width: 100%;
+}
+
+button {
+  flex: 1;
+  height: 31px;
+  padding: 0 3px;
+  border: 0;
+  border-radius: 9px;
+  color: var(--ivory);
+  cursor: pointer;
+  font: 700 12px/1 'Segoe UI', system-ui, sans-serif;
+  text-shadow: 0 1px 2px rgba(16, 11, 30, .7);
+}
+
+button:hover:not(:disabled) { background: rgba(84, 72, 99, .9); transform: translateY(-1px); }
+button:focus-visible { outline: 2px solid var(--jade); outline-offset: 1px; border-radius: 5px; }
+button:disabled { cursor: default; opacity: .72; }
+.primary { color: var(--jade); }
+
+@media (prefers-reduced-motion: reduce) {
+  body.running .pet { animation: none; }
+  button:hover:not(:disabled) { transform: none; }
+}

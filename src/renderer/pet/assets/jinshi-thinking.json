@@ -1,0 +1,28 @@
+{
+  "image": "jinshi-thinking.png",
+  "layout": "packed",
+  "columns": 6,
+  "rows": 1,
+  "cellWidth": 362,
+  "cellHeight": 724,
+  "frameCrop": {
+    "top": 130,
+    "height": 500
+  },
+  "scaledSprite": {
+    "width": 100,
+    "height": 136,
+    "topPadding": 5
+  },
+  "frameSize": {
+    "width": 151,
+    "height": 149
+  },
+  "animations": {
+    "idleThinking": {
+      "row": 0,
+      "frames": 6,
+      "folder": "idle-thinking"
+    }
+  }
+}
